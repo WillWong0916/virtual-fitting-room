@@ -96,6 +96,18 @@ virtual-fitting-room/          (總專案資料夾)
     1.  修改 `inference.py` 使 `kaolin` 變為可選依賴，確保基礎功能不崩潰。
     2.  將此部分標記為「建議在 Windows (NVIDIA) 環境開發」，但已完成 Mac 端的代碼預適應 (MPS Patching)。
 
+### 3.5 API 封裝與前後端整合 (API & Integration)
+*   **任務**: 將孤立的 Python AI 腳本轉化為可供網路呼叫的服務。
+*   **實作**: 
+    *   **建立 `body_service.py`**: 採用 Singleton 模式封裝 AI 邏輯，實施延遲加載 (Lazy Loading) 確保伺服器啟動快速，僅在首次呼叫時載入模型。
+    *   **路徑攻堅**: 解決了在 FastAPI 進程下找不到 `sam-3d-body` 內部工具包的問題（透過 `sys.path.insert(0, ...)` 與 `os.chdir()`）。
+    *   **API 接口實作**: 
+        *   `/upload/body`: 支援 `multipart/form-data` 圖片上傳。
+        *   **自動化流程**: 接收圖片 -> 暫存 -> AI 推論 -> 生成 OBJ -> 存入 `outputs/` 資料夾。
+        *   **靜態資源掛載**: 使用 `app.mount("/outputs", ...)` 讓生成的 3D 模型可直接透過 URL (如 `http://localhost:8000/outputs/model.obj`) 存取。
+*   **測試結果**: 成功通過 `curl` 測試，API 可在 30 秒內完成「圖片進，3D 模型出」的完整鏈路。
+*   **MPS 深度修正**: 解決了 MHR 模型內部 `float64` 與 MPS 不相容導致的 `RuntimeError`，改採「混合設備執行」策略：神經網路跑 MPS，幾何計算跑 CPU。
+
 ### 3.6 前端 3D 預覽與全鏈路整合 (Frontend Integration)
 *   **任務**: 實現用戶介面，讓使用者能直觀地上傳照片並查看 3D 結果。
 *   **實作**: 
