@@ -61,6 +61,85 @@
   color: #aaa;
 }
 
+.main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.presets-panel {
+  width: 200px;
+  background-color: rgba(30, 30, 30, 0.9);
+  border-right: 1px solid #333;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 5;
+}
+
+.presets-panel h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #4facfe;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.presets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.preset-item {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-radius: 8px;
+  padding: 0.5rem;
+  background: #222;
+  border: 1px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.preset-item:hover {
+  background: #333;
+  border-color: #4facfe;
+}
+
+.preset-item.active {
+  background: #2b3a4a;
+  border-color: #4facfe;
+  box-shadow: 0 0 10px rgba(79, 172, 254, 0.3);
+}
+
+.thumbnail-wrapper {
+  width: 100%;
+  aspect-ratio: 3/4; /* 改為 3:4 比例，更符合人體照片的形狀 */
+  overflow: hidden;
+  border-radius: 4px;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnail-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 改為 contain 確保整張圖片都看得見，不被裁切 */
+}
+
+.preset-item span {
+  font-size: 0.8rem;
+  color: #ccc;
+  text-align: center;
+}
+
 .canvas-container {
   flex: 1;
   width: 100%;

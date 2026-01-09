@@ -15,8 +15,8 @@ SAM_3D_BODY_DIR = CURRENT_DIR / "sam-3d-body"
 if str(SAM_3D_BODY_DIR) not in sys.path:
     sys.path.insert(0, str(SAM_3D_BODY_DIR))
 
-# 2. 強制變更當前工作目錄到 sam-3d-body，這對內部相對路徑讀取權重檔非常重要
-os.chdir(str(SAM_3D_BODY_DIR))
+# 2. 不使用 os.chdir()，而是通過環境變數或絕對路徑管理
+# 大部分 sam-3d-body 的模型加載已經適配了絕對路徑
 
 try:
     from notebook.utils import setup_sam_3d_body
