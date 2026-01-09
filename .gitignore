@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+build/
+dist/
+.env
+
+# Model Checkpoints & Large Files
+*.pt
+*.pth
+*.bin
+*.pkl
+outputs/
+outputs_cache.pkl
+*.obj
+*.jpg
+*.png
+*.off
+
+# Node / Frontend
+node_modules/
+dist/
+.eslintcache
+.vscode/
+.DS_Store
+
+# Git
+.git/
+
+# Project Specific
+backend/sam-3d-body/checkpoints/
+backend/sam-3d-objects/checkpoints/
+clothing-factory/sam-3d-objects/checkpoints/
+
