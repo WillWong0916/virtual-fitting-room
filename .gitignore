@@ -1,38 +1,66 @@
-# Python
+# --- Python & System ---
 __pycache__/
 *.py[cod]
 *$py.class
 .venv/
 venv/
 ENV/
-build/
-dist/
 .env
 
-# Model Checkpoints & Large Files
-*.pt
-*.pth
-*.bin
-*.pkl
-outputs/
-outputs_cache.pkl
-*.obj
-*.jpg
-*.png
-*.off
+# Windows (因為你有用桌機)
+Thumbs.db
+Desktop.ini
 
-# Node / Frontend
-node_modules/
-dist/
-.eslintcache
-.vscode/
+# Mac
 .DS_Store
 
-# Git
-.git/
+# --- Build Artifacts ---
+build/
+dist/
 
-# Project Specific
+# --- Model Checkpoints (AI 核心，絕對忽略) ---
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.pkl
+*.safetensors
+*.onnx
+
+# --- Large 3D/Media Files (全域忽略，避免誤傳) ---
+*.obj
+*.glb
+*.gltf
+*.ply
+*.jpg
+*.png
+*.jpeg
+*.mp4
+*.off
+
+# ⚠️ [例外規則] 允許前端的資源上傳 (重要！)
+# 這樣你的網站 Logo 和預製好的衣服模型才能被 Git 備份
+!frontend/src/**
+!frontend/public/**
+
+# --- Output Folders (生成的臨時檔案) ---
+outputs/
+outputs_cache.pkl
+clothing-factory/output_models/
+clothing-factory/input_images/
+
+# --- Node / Frontend ---
+node_modules/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- IDE Settings ---
+.vscode/
+.idea/
+
+# --- Project Specific Checkpoints ---
+# 確保不管放在哪裡，模型權重都不會被上傳
 backend/sam-3d-body/checkpoints/
-backend/sam-3d-objects/checkpoints/
 clothing-factory/sam-3d-objects/checkpoints/
-
