@@ -1,42 +1,100 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 100%;
+  height: 100%;
+}
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #111;
+  color: white;
+  overflow: hidden;
+}
+
+.app-header {
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  border-bottom: 1px solid #333;
+  z-index: 10;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.app-header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 2px;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.status-msg {
+  margin: 10px 0;
+  font-size: 0.9rem;
+  color: #aaa;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.status-msg.loading {
+  color: #3498db;
+  font-weight: bold;
 }
 
-.card {
-  padding: 2em;
+.upload-section {
+  margin-top: 15px;
 }
 
-.read-the-docs {
-  color: #888;
+.upload-btn {
+  background: #3498db;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: inline-block;
+}
+
+.upload-btn:hover {
+  background: #2980b9;
+  transform: translateY(-2px);
+}
+
+.upload-btn[disabled] {
+  background: #555;
+  cursor: not-allowed;
+}
+
+.canvas-container {
+  flex: 1;
+  position: relative;
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-overlay p {
+  font-size: 1.1rem;
+  letter-spacing: 1px;
 }
