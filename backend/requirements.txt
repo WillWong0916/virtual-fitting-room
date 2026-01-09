@@ -1,4 +1,7 @@
 fastapi
 uvicorn
 pydantic
+python-multipart
+trimesh
+opencv-python
 

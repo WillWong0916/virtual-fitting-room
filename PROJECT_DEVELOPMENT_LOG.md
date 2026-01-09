@@ -96,12 +96,25 @@ virtual-fitting-room/          (總專案資料夾)
     1.  修改 `inference.py` 使 `kaolin` 變為可選依賴，確保基礎功能不崩潰。
     2.  將此部分標記為「建議在 Windows (NVIDIA) 環境開發」，但已完成 Mac 端的代碼預適應 (MPS Patching)。
 
+### 3.5 API 封裝與前後端整合 (API & Integration)
+*   **任務**: 將孤立的 Python AI 腳本轉化為可供網路呼叫的服務。
+*   **實作**: 
+    *   **建立 `body_service.py`**: 採用 Singleton 模式封裝 AI 邏輯，實施延遲加載 (Lazy Loading) 確保伺服器啟動快速，僅在首次呼叫時載入模型。
+    *   **路徑攻堅**: 解決了在 FastAPI 進程下找不到 `sam-3d-body` 內部工具包的問題（透過 `sys.path.insert(0, ...)` 與 `os.chdir()`）。
+    *   **API 接口實作**: 
+        *   `/upload/body`: 支援 `multipart/form-data` 圖片上傳。
+        *   **自動化流程**: 接收圖片 -> 暫存 -> AI 推論 -> 生成 OBJ -> 存入 `outputs/` 資料夾。
+        *   **靜態資源掛載**: 使用 `app.mount("/outputs", ...)` 讓生成的 3D 模型可直接透過 URL (如 `http://localhost:8000/outputs/model.obj`) 存取。
+*   **測試結果**: 成功通過 `curl` 測試，API 可在 30 秒內完成「圖片進，3D 模型出」的完整鏈路。
+*   **MPS 深度修正**: 解決了 MHR 模型內部 `float64` 與 MPS 不相容導致的 `RuntimeError`，改採「混合設備執行」策略：神經網路跑 MPS，幾何計算跑 CPU。
+
 ---
 
 ## 4. 取得成果 (Milestones Achieved)
 1.  **3D Mesh 生成**: 成功從一張照片產出 **`output_body.obj`**，包含精確的人體拓撲結構。
-2.  **視覺化 pipeline**: 自動生成包含「原圖+骨架+3D 疊加+側視圖」的綜合結果圖 `output_result.jpg`。
+2.  **AI API 化**: 成功將複雜的 3D 研究模型轉換為穩定運行的 FastAPI 接口。
 3.  **環境標準化**: 建立了一套適配 Apple Silicon M4 的 `.venv` 開發環境，解決了大多數研究級 AI 項目無法在 Mac 運行的通點。
+4.  **混合渲染支持**: 成功實作 MPS 與 CPU 協同工作模式，突破硬體浮點運算限制。
 
 ---
 
