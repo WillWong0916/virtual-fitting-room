@@ -108,14 +108,12 @@ virtual-fitting-room/          (總專案資料夾)
 *   **測試結果**: 成功通過 `curl` 測試，API 可在 30 秒內完成「圖片進，3D 模型出」的完整鏈路。
 *   **MPS 深度修正**: 解決了 MHR 模型內部 `float64` 與 MPS 不相容導致的 `RuntimeError`，改採「混合設備執行」策略：神經網路跑 MPS，幾何計算跑 CPU。
 
-### 3.7 專案重構與模組化升級 (Modularization & Optimization)
-*   **任務**: 提升代碼品質，為接下來的「衣服重建模組」整合打下基礎。
-*   **實作 (前端)**: 
-    *   **組件化拆分**: 建立了 `components/` 目錄，將 3D 渲染邏輯 (`Scene.tsx`)、人體模型邏輯 (`BodyModel.tsx`) 與介面控制 (`Sidebar.tsx`) 徹底解耦。
-    *   **配置管理**: 建立 `config/index.ts` 集中管理 API 地址與環境變數。
-*   **實作 (後端)**: 
-    *   **路徑安全性優化**: 移除 `body_service.py` 中的 `os.chdir()` 全域操作，改採穩健的系統路徑管理，防止多線程執行時的競態條件 (Race Condition)。
-*   **成果**: 專案結構變得極度清晰，各模組職責分明，極大降低了後續功能疊加的難度。
+### 3.8 後端架構模組化 (Backend Router Modularization)
+*   **任務**: 將後端 API 結構化，方便後續擴充衣服生成路由。
+*   **實作**: 
+    *   **Router 拆分**: 引入 `fastapi.APIRouter`，將人體生成邏輯移至 `routers/body.py`。
+    *   **主程序精簡**: `main.py` 現在僅負責伺服器配置、CORS 與路由掛載，大幅提升了代碼的可維護性。
+*   **成果**: 後端架構已完全具備生產級別的擴展能力，為接下來整合 Windows 端產出的 `clothing-factory` API 留好了接口。
 
 ---
 
@@ -123,7 +121,7 @@ virtual-fitting-room/          (總專案資料夾)
 1.  **3D Mesh 生成**: 成功從一張照片產出 **`output_body.obj`**，包含精確的人體拓撲結構。
 2.  **AI API 化**: 成功將複雜的 3D 研究模型轉換為穩定運行的 FastAPI 接口。
 3.  **End-to-End 全鏈路打通**: 實現了從網頁上傳到瀏覽器 3D 渲染的完整自動化流程。
-4.  **系統架構現代化**: 完成前端組件化與後端服務路徑優化，專案進入「工業級」代碼結構。
+4.  **系統架構現代化**: 完成前後端雙端的模組化重構（React Components & FastAPI Routers），專案架構極度穩健。
 
 ---
 
