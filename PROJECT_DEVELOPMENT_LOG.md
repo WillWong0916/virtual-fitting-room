@@ -108,6 +108,20 @@ virtual-fitting-room/          (總專案資料夾)
 *   **測試結果**: 成功通過 `curl` 測試，API 可在 30 秒內完成「圖片進，3D 模型出」的完整鏈路。
 *   **MPS 深度修正**: 解決了 MHR 模型內部 `float64` 與 MPS 不相容導致的 `RuntimeError`，改採「混合設備執行」策略：神經網路跑 MPS，幾何計算跑 CPU。
 
+### 3.6 前端 3D 預覽與全鏈路整合 (Frontend Integration)
+*   **任務**: 實現用戶介面，讓使用者能直觀地上傳照片並查看 3D 結果。
+*   **實作**: 
+    *   **React + Three.js 整合**: 使用 `@react-three/fiber` 與 `@react-three/drei` 建立畫布，解決了模型翻轉與光影問題。
+    *   **3D 渲染優化**: 加入了 `Stage`、`Environment` 與落地陰影，提升視覺真實感。
+*   **成果**: 完成了從單張照片到瀏覽器 3D 可視化的完整閉環。
+
+### 3.7 專案重構與模組化升級 (Modularization & Optimization)
+*   **任務**: 提升代碼品質，將原本臃腫的 `App.tsx` 進行組件化拆分。
+*   **實作**: 
+    *   **組件化**: 拆分出 `Scene.tsx`、`Sidebar.tsx` 與 `BodyModel.tsx`。
+    *   **配置化**: 建立 `config/index.ts` 統一管理 API 地址。
+*   **成果**: 前端代碼變得極易維護，邏輯職責分明。
+
 ### 3.8 後端架構模組化 (Backend Router Modularization)
 *   **任務**: 將後端 API 結構化，方便後續擴充衣服生成路由。
 *   **實作**: 
