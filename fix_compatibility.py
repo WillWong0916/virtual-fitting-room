@@ -1,7 +1,7 @@
 import os
 import re
 
-target_dir = "/Users/willwong/.cache/torch/hub/facebookresearch_dinov3_main/"
+target_dir = os.path.expanduser("~/.cache/torch/hub/facebookresearch_dinov3_main/")
 
 def fix_file(file_path):
     with open(file_path, 'r') as f:

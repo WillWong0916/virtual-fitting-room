@@ -6,6 +6,7 @@ __pycache__/
 venv/
 ENV/
 .env
+*.log
 
 # Windows (因為你有用桌機)
 Thumbs.db

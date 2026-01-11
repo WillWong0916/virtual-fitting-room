@@ -1,0 +1,34 @@
+# Cursor Rules for Virtual Fitting Room Project
+
+## Project Architecture
+- **Hybrid Architecture**: "Front Store, Back Factory" (前店後廠).
+- **Backend (Mac)**: FastAPI, SAM 3D Body (MPS/CPU).
+- **Frontend (Mac)**: React, Three.js, Vite.
+- **Factory (Windows)**: SAM 3D Objects (CUDA).
+
+## Development Guidelines
+- Always prioritize **relative paths** using `Path(__file__)` or `os.path`.
+- Backend outputs should be saved in `backend/outputs/` and served via `/outputs` mount.
+- Frontend configuration is located in `frontend/src/config/index.ts`.
+- AI logic is encapsulated in `backend/body_service.py` (Singleton pattern).
+- Factory logic is located in `clothing-factory/sam-3d-objects/`.
+
+## Hardware Optimization
+- **Mac**: Use **MPS** (Metal Performance Shaders) for torch.
+- **Windows**: Use **CUDA** (NVIDIA RTX 4090).
+- Use `device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"`.
+
+## Cross-Platform Compatibility
+- Always use `pathlib.Path` or `os.path.join` for file paths to support both `\` (Windows) and `/` (Mac).
+- Python 3.11 is the standard across all platforms.
+- For Windows, assume environments managed by **Conda**.
+- For Mac, assume environments managed by **venv**.
+
+## Windows Development (Clothing Factory)
+- When working in `clothing-factory/`, assume **PowerShell** or **WSL2**.
+- Focus on **CUDA** compatibility and **PyTorch3D** specific issues.
+- Outputs should target `frontend/public/models/` for easy sharing.
+
+## File Naming Conventions
+- Generated bodies: `{image_name}_body_{index}.obj`
+- Generated clothes: `{image_name}_cloth_{index}.obj`
