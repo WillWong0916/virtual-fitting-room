@@ -61,6 +61,9 @@ yarn-error.log*
 .vscode/
 .idea/
 
+# --- Tools ---
+backend/detectron2/
+
 # --- Project Specific Checkpoints ---
 # 確保不管放在哪裡，模型權重都不會被上傳
 backend/sam-3d-body/checkpoints/
