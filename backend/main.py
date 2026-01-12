@@ -1,3 +1,27 @@
+import sys
+from pathlib import Path
+
+# 關鍵修正：解決 utils3d.pt 導入問題 (必須在所有 AI 模組之前)
+print(f"DEBUG: Current Python executable: {sys.executable}")
+print(f"DEBUG: sys.path: {sys.path[:3]} ...")
+try:
+    import utils3d
+    import utils3d.torch
+    # 強制設定 pt 屬性
+    utils3d.pt = utils3d.torch
+    # 解決 MoGe v2 期待 depth_map_to_point_map 但 utils3d 0.0.2 只有 depth_to_points 的問題
+    if hasattr(utils3d.torch, "depth_to_points") and not hasattr(utils3d.torch, "depth_map_to_point_map"):
+        utils3d.torch.depth_map_to_point_map = utils3d.torch.depth_to_points
+        print("Successfully aliased utils3d.torch.depth_map_to_point_map -> depth_to_points")
+    
+    # 強制注入 sys.modules 以支援 "import utils3d.pt"
+    sys.modules["utils3d.pt"] = utils3d.torch
+    print("Successfully patched utils3d.pt -> utils3d.torch globally")
+except ImportError as e:
+    print(f"Warning: utils3d or utils3d.torch not found: {e}")
+except Exception as e:
+    print(f"Unexpected error during utils3d patch: {e}")
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles

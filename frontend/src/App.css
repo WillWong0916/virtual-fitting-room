@@ -61,10 +61,21 @@
   color: #aaa;
 }
 
+/* 關鍵：Canvas 的容器必須有明確高度 */
+.scene-container {
+  flex: 1;
+  height: 100%;
+  background-color: #1a1a1a;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
 .main-content {
   flex: 1;
   display: flex;
   overflow: hidden;
+  height: calc(100vh - 60px); /* 扣除 header 高度 */
 }
 
 .presets-panel {
@@ -143,6 +154,7 @@
 .canvas-container {
   flex: 1;
   width: 100%;
+  height: 100%;
   position: relative;
 }
 
@@ -154,7 +166,7 @@ canvas {
 /* Clothing Factory Styles */
 .clothes-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
   margin-top: 20px;
 }

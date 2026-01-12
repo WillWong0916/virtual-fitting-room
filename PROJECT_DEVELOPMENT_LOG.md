@@ -93,6 +93,21 @@ virtual-fitting-room/          (總專案資料夾)
 *   **前端增強**: 實作衣服與人體的即時組合預覽介面。
 *   **自動化流**: 優化 Windows 與 Mac 之間的自動化檔案同步。
 
----
-**日誌維護者**: Cursor AI & User
-**最後更新日期**: 2026-01-12
+### 第 14 章：人體重建環境優化與 Detectron2 修復 (2026-01-12)
+在整合 `sam-3d-body` 時，解決了環境中的關鍵依賴與導入衝突。
+
+#### 1. Detectron2 深度編譯
+*   **編譯挑戰**: 在 Windows 下安裝 `detectron2` 經常失敗。通過「隱藏 Ninja」策略與 `SETUPTOOLS_USE_DISTUTILS="stdlib"` 環境變數，成功完成了本地編譯。
+*   **模型載入**: 成功載入 `ViTDet` 人體檢測模型，實現了人體 Bounding Box 的自動提取。
+
+#### 2. 全域導入修復 (utils3d.pt Patch)
+*   **問題描述**: `sam-3d-body` 與 `MoGe` 套件對 `utils3d` 的內部引用路徑不一致（`pt` vs `torch`），且 `MoGe v2` 調用了新版本才有的 `depth_map_to_point_map` 函數，導致 `FOV Estimator` 崩潰。
+*   **解決方案**: 在 `backend/main.py` 的最頂端實施了全域 **Monkey Patch**。
+    *   將 `utils3d.torch` 對應到 `utils3d.pt`。
+    *   將 `utils3d.torch.depth_to_points` 別名為 `depth_map_to_point_map`。
+    *   強制注入 `sys.modules["utils3d.pt"]` 以支援各類導入語法。
+    *   此修正確保了 `sam-3d-body` 的 FOV 推算模組能正常運作。
+
+#### 3. 系統穩定性增強
+*   **熱重載優化**: 確保 `uvicorn` 在代碼變更時能正確重新套用 Patch。
+*   **除錯日誌**: 增加了環境變數與路徑的啟動診斷資訊。

@@ -81,5 +81,23 @@ python setup.py install
 *   **問題**: 安裝 `detectron2` 或 `PyTorch3D` 時報錯 `ninja` 相關衝突。
 *   **解決**: 暫時將 Visual Studio 內的 `ninja.exe` 改名（如 `ninja.exe.bak`），強制使用 MSVC 編譯，安裝完後再改回來。
 
+## 7. Body Reconstruction 錯誤 (sam-3d-body)
+
+### Error: `No module named 'utils3d.pt'` 或 `module 'utils3d.torch' has no attribute 'depth_map_to_point_map'`
+*   **原因**: `sam-3d-body` 與 `MoGe v2` 預期的 `utils3d` 結構與功能名稱與目前的版本 (0.0.2) 不同。
+*   **修復**: 
+    1.  檢查 `backend/main.py` 是否有最新的全域 Monkey Patch 代碼（包含 `depth_map_to_point_map` 的別名）。
+    2.  確保啟動後端時，Console 有印出 `Successfully patched utils3d.pt -> utils3d.torch globally` 與 `Successfully aliased ...`。
+    3.  如果還是失敗，請手動執行 `pip install "MoGe @ git+https://github.com/microsoft/MoGe.git@a8c37341bc0325ca99b9d57981cc3bb2bd3e255b"`。
+
+### Error: `No module named 'detectron2'`
+*   **修復**: 
+    1.  需要手動編譯 Detectron2。
+    2.  `$env:SETUPTOOLS_USE_DISTUTILS="stdlib"`
+    3.  `$env:FORCE_CUDA="1"`
+    4.  `$env:NVCC_FLAGS="--allow-unsupported-compiler"`
+    5.  `git clone https://github.com/facebookresearch/detectron2`
+    6.  `cd detectron2 && pip install . --no-build-isolation`
+
 ---
 *最後更新日期: 2026-01-12 (高品質渲染版)*

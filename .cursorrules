@@ -34,6 +34,14 @@
 - Generated bodies: `{image_name}_body_{index}.obj`
 - Generated clothes: `{image_name}_cloth_{index}.obj`
 
+## Technical Insights (SAM 3D Body & Objects)
+- **Model Alignment**: Official logic for aligning body and clothing models in the same frame of reference exists in `clothing-factory/sam-3d-objects/notebook/demo_3db_mesh_alignment.ipynb`. This is critical for future "Virtual Fitting" features.
+- **Promptable Inference**: Both models support auxiliary prompts (2D keypoints, masks) to guide 3D reconstruction for complex scenes.
+- **MHR Representation**: Human models use **Momentum Human Rig (MHR)**, which decouples skeletal structure from surface shape, facilitating easier posing and clothing fit.
+- **Detectors**: The system supports multiple detectors (e.g., **ViTdet**, **sam3**). ViTdet is the high-quality default.
+- **Internal Representations**: SAM 3D Objects can produce both **Gaussian Splatting** (exportable as `.ply`) and **Meshes** (exportable as `.glb`/`.obj`).
+- **Scene Handling**: Robustly handles multi-object reconstruction, occlusions, and clutter. Details found in `demo_single_object.ipynb` and `demo_multi_object.ipynb`.
+
 ## Documentation & Maintenance
 - **Keep Logs Updated**: After every significant milestone or environment change, update `PROJECT_DEVELOPMENT_LOG.md`.
 - **Sync Troubleshooting**: Add new errors and solutions to `SETUP_TROUBLESHOOTING.md` immediately after resolving them.

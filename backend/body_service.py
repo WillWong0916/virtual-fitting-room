@@ -10,7 +10,6 @@ from pathlib import Path
 CURRENT_DIR = Path(__file__).parent.absolute()
 SAM_3D_BODY_DIR = CURRENT_DIR / "sam-3d-body"
 
-# 關鍵修正：
 # 1. 將 sam-3d-body 加入 sys.path 的最前面
 if str(SAM_3D_BODY_DIR) not in sys.path:
     sys.path.insert(0, str(SAM_3D_BODY_DIR))
