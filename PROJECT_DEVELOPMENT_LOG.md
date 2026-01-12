@@ -173,11 +173,35 @@ virtual-fitting-room/          (總專案資料夾)
 *   **中線**: 在 Windows 伺服器部署 `sam-3d-objects` 獲取服裝的 3D 模型。
 *   **長線**: 實現 3D 服裝與 3D 人體的「動態包裹 (Skinning)」算法，完成虛擬試穿閉環。
 
----
-**日誌維護者**: Cursor AI & User
-**最後更新日期**: 2026-01-11
+### 第 13 章：高品質材質烘焙與原生渲染器集成 (2026-01-12)
 
-## 8. Windows 遷移與「後廠」環境重建 (Windows Migration & Factory Recovery)
+在克服了環境依賴地獄後，我們成功啟用了 `sam-3d-objects` 的原生高品質渲染路徑。
+
+#### 1. 高性能渲染器安裝 (Nvdiffrast & Gaussian)
+- **Nvdiffrast 安裝**: 成功在 Windows 下編譯並安裝 NVIDIA 的微分渲染器。透過修改 `setup.py` 加入 `--allow-unsupported-compiler` 參數，繞過了 Visual Studio 版本限制。
+- **Diff-Gaussian-Rasterization 安裝**: 成功安裝了官方的高斯渲染器。解決了 `glm` 子模組缺失與 `torch` 編譯隔離環境的問題。
+- **Kaolin 整合**: 引入了官方預編譯的 `kaolin` 庫，確保了幾何處理的完整性。
+
+#### 2. 材質烘焙技術突破 (Texture Baking)
+- **自動化材質生成**: 實現了從 3D 高斯球（Gaussian Splatting）數據中烘焙出 2D PBR 貼圖的功能。
+- **效能優化**: 在 RTX 4090 上，100 個觀察視角的渲染僅需 **1 秒** 即可完成。
+- **Bug 修復**:
+    - 修復了 `GaussianRasterizationSettings` 參數不匹配的問題（移除 `kernel_size` 等非標準參數）。
+    - 解決了貼圖烘焙過程中的記憶體溢出與變數遮蔽（Variable Shadowing）問題。
+    - 校正了模型旋轉方向，實現了正確的「烤雞旋轉（站立旋轉）」。
+
+#### 3. 產出品質提升
+- **貼圖解析度**: 提升至 **1024x1024** (可選 2048)。
+- **材質真實感**: 產出的 GLB 模型現在具備真實的色彩與細節，不再是單調的頂點顏色。
+
+#### 4. 後端服務穩固化
+- **MoGe / Utils3D 完全整合**: 透過安裝特定版本的 `MoGe` 獲取了相容的 `utils3d`，移除了所有臨時的 Monkey Patch 代碼。
+- **Service 封裝**: `ClothesReconstructionService` 現在支援全自動的「照片進，高品質 GLB 出」流程。
+
+---
+
+**日誌維護者**: Cursor AI & User
+**最後更新日期**: 2026-01-12
 *   **背景**: 項目從 Mac (前店) 正式擴展至 Windows (後廠)，利用 RTX 4090 的 CUDA 性能。
 *   **實作紀錄**:
     *   **環境標準化**: 在 Windows 上建立了兩個核心 Conda 環境：`vfitting-body` (後端人體) 與 `sam3d-objects` (衣服工廠)，統一使用 Python 3.11.9。

@@ -54,7 +54,9 @@ conda activate sam3d-objects
 pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu124
 # 3. 安裝 Kaolin 預編譯包 (在資料夾內)
 pip install kaolin-0.17.0-cp311-cp311-win_amd64.whl
-# 4. 安裝其餘依賴與 Patch (詳見 SETUP_TROUBLESHOOTING.md)
+# 4. 安裝高品質渲染器 (Nvdiffrast & Gaussian)
+# 請參考 PROJECT_DEVELOPMENT_LOG.md 中的詳細編譯步驟
+# 5. 安裝其餘依賴與 Patch (詳見 SETUP_TROUBLESHOOTING.md)
 pip install -r requirements.txt
 ```
 > **注意**: 如果遇到 `utils3d` 函數缺失報錯，請參考 `SETUP_TROUBLESHOOTING.md` 中的手動補全方案。

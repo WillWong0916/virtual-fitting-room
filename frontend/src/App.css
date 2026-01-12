@@ -150,3 +150,63 @@
 canvas {
   display: block;
 }
+
+/* Clothing Factory Styles */
+.clothes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.cloth-card {
+  border: 1px solid #333;
+  border-radius: 12px;
+  padding: 15px;
+  text-align: center;
+  background-color: #1a1a1a;
+  transition: all 0.2s ease;
+}
+
+.cloth-card:hover {
+  transform: translateY(-5px);
+  border-color: #4facfe;
+  box-shadow: 0 5px 15px rgba(79, 172, 254, 0.2);
+}
+
+.cloth-thumbnail {
+  height: 150px;
+  background-color: #222;
+  border-radius: 8px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  border: 1px dashed #444;
+}
+
+.cloth-name {
+  font-weight: bold;
+  margin: 10px 0;
+  color: #fff;
+}
+
+.cloth-link {
+  font-size: 0.9em;
+  color: #4facfe;
+  text-decoration: none;
+}
+
+.cloth-link:hover {
+  text-decoration: underline;
+}
+
+nav a {
+  transition: color 0.3s;
+}
+
+nav a:hover {
+  color: #4facfe !important;
+}
+

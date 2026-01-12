@@ -12,7 +12,6 @@ import pyvista as pv
 from pymeshfix import _meshfix
 import igraph
 import cv2
-from PIL import Image
 from .random_utils import sphere_hammersley_sequence
 from .render_utils import render_multiview
 from ..renderers import GaussianRenderer
@@ -471,26 +470,23 @@ def bake_texture(
 
     elif mode == "opt":
         rastctx = utils3d.torch.RastContext(backend=device if device.startswith("cuda") else "cuda")
-        observations = [observations.flip(0) for observations in observations]
-        masks = [m.flip(0) for m in masks]
+        
+        # 使用簡單穩定的處理方式
+        processed_observations = [obs.flip(0) for obs in observations]
+        processed_masks = [m.flip(0) for m in masks]
         _uv = []
         _uv_dr = []
-        for observation, view, projection in tqdm(
-            zip(observations, views, projections),
-            total=len(views),
-            disable=not verbose,
-            desc="Texture baking (opt): UV",
-        ):
+        for i in range(len(views)):
             with torch.no_grad():
                 rast = utils3d.torch.rasterize_triangle_faces(
                     rastctx,
                     vertices[None],
                     faces,
-                    observation.shape[1],
-                    observation.shape[0],
+                    processed_observations[i].shape[1],
+                    processed_observations[i].shape[0],
                     uv=uvs[None],
-                    view=view,
-                    projection=projection,
+                    view=views[i],
+                    projection=projections[i],
                 )
                 _uv.append(rast["uv"].detach())
                 _uv_dr.append(rast["uv_dr"].detach())
@@ -513,27 +509,6 @@ def bake_texture(
                 texture[:, :-1, :, :], texture[:, 1:, :, :]
             ) + torch.nn.functional.l1_loss(texture[:, :, :-1, :], texture[:, :, 1:, :])
 
-
-
-        def render_pt3d_texture(texture, uv, uv_dr=None):
-            import torch.nn.functional as F
-            texture_perm = texture.permute(0, 3, 1, 2)
-            grid = uv * 2 - 1
-            if grid.dim() == 3:
-                grid = grid.unsqueeze(0)  # (1, H, W, 2)
-            elif grid.dim() == 4 and grid.shape[0] == 1:
-                pass  
-            elif grid.dim() == 4 and grid.shape[1] == 1:
-                grid = grid.squeeze(1)  # remove extra batch dimension if necessary
-            else:
-                raise ValueError(f"Unexpected grid shape: {grid.shape}")
-            render = F.grid_sample(
-                texture_perm, grid, mode='bilinear', padding_mode='border', align_corners=True
-            )
-            render = render.permute(0, 2, 3, 1)[0]  # (H_out, W_out, 3)
-            return render
-        
-        
         total_steps = 2500
         
         with tqdm(
@@ -547,16 +522,12 @@ def bake_texture(
                 uv, uv_dr, observation, mask = (
                     _uv[selected],
                     _uv_dr[selected],
-                    observations[selected],
-                    masks[selected],
+                    processed_observations[selected],
+                    processed_masks[selected],
                 )
                 
-                if rendering_engine == "nvdiffrast":
-                    import nvdiffrast.torch as dr
-                    render = dr.texture(texture, uv, uv_dr)[0]
-
-                if rendering_engine == "pytorch3d":
-                    render = render_pt3d_texture(texture, uv)
+                import nvdiffrast.torch as dr
+                render = dr.texture(texture, uv, uv_dr)[0]
                     
                 loss = torch.nn.functional.l1_loss(render[mask], observation[mask])
                 if lambda_tv > 0:
@@ -662,8 +633,8 @@ def to_glb(
             baseColorFactor=np.array([255, 255, 255, 255], dtype=np.uint8),
         )
 
-    # rotate mesh (from z-up to y-up)
-    vertices = vertices @ np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
+    # --- 移除 Z-up 轉 Y-up，讓 clothes_service 完全控制 ---
+    # vertices = vertices @ np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
 
     if not with_mesh_postprocess and not with_texture_baking and use_vertex_color:
         mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)

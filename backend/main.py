@@ -2,9 +2,21 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from routers import body
+from routers import body, clothes
+
+import logging
+import sys
+
+# 配置日誌
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger("uvicorn")
 
 app = FastAPI(title="Virtual Fitting Room API")
+
 
 # Enable CORS
 app.add_middleware(
@@ -26,6 +38,7 @@ app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")
 
 # Include routers
 app.include_router(body.router)
+app.include_router(clothes.router)
 
 @app.get("/")
 async def root():
@@ -33,6 +46,8 @@ async def root():
         "message": "3D Fitting Room API is running",
         "endpoints": {
             "upload_body": "/upload/body",
+            "upload_cloth": "/clothes/upload/cloth",
+            "list_clothes": "/clothes",
             "static_models": "/outputs"
         }
     }

@@ -15,18 +15,22 @@ SAM_3D_BODY_DIR = CURRENT_DIR / "sam-3d-body"
 if str(SAM_3D_BODY_DIR) not in sys.path:
     sys.path.insert(0, str(SAM_3D_BODY_DIR))
 
-# 2. 不使用 os.chdir()，而是通過環境變數或絕對路徑管理
-# 大部分 sam-3d-body 的模型加載已經適配了絕對路徑
+# 全域導入 flag
+AI_MODULES_AVAILABLE = False
+IMPORT_ERROR_MSG = ""
 
 try:
     from notebook.utils import setup_sam_3d_body
-    from tools.vis_utils import visualize_sample_together
+    AI_MODULES_AVAILABLE = True
 except ImportError as e:
-    print(f"Error loading AI modules: {e}")
+    IMPORT_ERROR_MSG = str(e)
     # 如果還是失敗，嘗試更激進的路徑策略
-    sys.path.append(str(SAM_3D_BODY_DIR / "sam_3d_body"))
-    from notebook.utils import setup_sam_3d_body
-    from tools.vis_utils import visualize_sample_together
+    try:
+        sys.path.append(str(SAM_3D_BODY_DIR / "sam_3d_body"))
+        from notebook.utils import setup_sam_3d_body
+        AI_MODULES_AVAILABLE = True
+    except ImportError as e2:
+        IMPORT_ERROR_MSG = f"Original error: {e}, Secondary error: {e2}"
 
 class BodyReconstructionService:
     def __init__(self):
@@ -37,6 +41,9 @@ class BodyReconstructionService:
 
     def load_model(self):
         """延遲加載模型，確保只在第一次呼叫時加載"""
+        if not AI_MODULES_AVAILABLE:
+            raise RuntimeError(f"Body reconstruction AI modules are not available in current environment: {IMPORT_ERROR_MSG}")
+            
         if self.estimator is None:
             print(f"Loading SAM 3D Body model on {self.device}...")
             self.estimator = setup_sam_3d_body(
@@ -92,4 +99,3 @@ class BodyReconstructionService:
 
 # 建立全域單例，讓 FastAPI 呼叫
 body_service = BodyReconstructionService()
-
