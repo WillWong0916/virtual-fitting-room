@@ -18,7 +18,8 @@ app.add_middleware(
 # Setup directories
 BASE_DIR = Path(__file__).parent
 OUTPUT_DIR = BASE_DIR / "outputs"
-OUTPUT_DIR.mkdir(exist_ok=True)
+(OUTPUT_DIR / "bodies").mkdir(parents=True, exist_ok=True)
+(OUTPUT_DIR / "clothes").mkdir(parents=True, exist_ok=True)
 
 # Mount static files
 app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")

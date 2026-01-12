@@ -2,9 +2,10 @@
 
 ## Project Architecture
 - **Hybrid Architecture**: "Front Store, Back Factory" (前店後廠).
-- **Backend (Mac)**: FastAPI, SAM 3D Body (MPS/CPU).
-- **Frontend (Mac)**: React, Three.js, Vite.
-- **Factory (Windows)**: SAM 3D Objects (CUDA).
+- **Primary Environment (Windows)**: RTX 4090 / CUDA. Core environment for AI generation (3D Body & Objects). 100x faster than Mac MPS.
+- **Auxiliary Environment (Mac)**: M4 / MPS. Used for mobile development, UI/UX demo, and remote coding.
+- **Backend**: FastAPI (Python 3.11).
+- **Frontend**: React + Three.js.
 
 ## Development Guidelines
 - Always prioritize **relative paths** using `Path(__file__)` or `os.path`.
@@ -32,3 +33,9 @@
 ## File Naming Conventions
 - Generated bodies: `{image_name}_body_{index}.obj`
 - Generated clothes: `{image_name}_cloth_{index}.obj`
+
+## Documentation & Maintenance
+- **Keep Logs Updated**: After every significant milestone or environment change, update `PROJECT_DEVELOPMENT_LOG.md`.
+- **Sync Troubleshooting**: Add new errors and solutions to `SETUP_TROUBLESHOOTING.md` immediately after resolving them.
+- **Maintain README**: Ensure `README.md` reflects the current setup steps and architecture.
+- **Chinese Response**: Always respond in Traditional Chinese (繁體中文).

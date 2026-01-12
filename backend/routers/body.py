@@ -35,7 +35,7 @@ async def upload_body(file: UploadFile = File(...)):
             raise HTTPException(status_code=500, detail="AI failed to generate 3D model")
         
         # 3. 轉換為可訪問的 URL 路徑
-        file_urls = [f"/outputs/{Path(f).name}" for f in generated_files]
+        file_urls = [f"/outputs/bodies/{Path(f).name}" for f in generated_files]
         
         return {
             "status": "success",
