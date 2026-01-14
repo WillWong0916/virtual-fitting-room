@@ -13,6 +13,7 @@
 - Frontend configuration is located in `frontend/src/config/index.ts`.
 - AI logic is encapsulated in `backend/body_service.py` (Singleton pattern).
 - Factory logic is located in `clothing-factory/sam-3d-objects/`.
+- **Frontend i18n**: Multi-language support is implemented using React Context. Translation files are in `frontend/src/locales/` (en.json, zh-TW.json, zh-CN.json). Use `useTranslation()` hook in components.
 
 ## Hardware Optimization
 - **Mac**: Use **MPS** (Metal Performance Shaders) for torch.

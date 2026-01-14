@@ -1,4 +1,5 @@
 import { PRESET_MODELS, type PresetModel } from '../constants/presets';
+import { useTranslation } from '../contexts/I18nContext';
 
 interface SidebarProps {
   onSelectPreset: (preset: PresetModel) => void;
@@ -7,9 +8,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({ onSelectPreset, selectedPresetId, loading }: SidebarProps) {
+  const { t } = useTranslation();
+
   return (
     <aside className="presets-panel">
-      <h3>Presets</h3>
+      <h3>{t('fittingRoom.presets')}</h3>
       <div className="presets-list">
         {PRESET_MODELS.map((preset) => (
           <div 
@@ -28,4 +31,3 @@ export function Sidebar({ onSelectPreset, selectedPresetId, loading }: SidebarPr
     </aside>
   );
 }
-

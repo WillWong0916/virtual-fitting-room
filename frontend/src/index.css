@@ -20,7 +20,7 @@ body {
   margin: 0;
   overflow-x: hidden;
   cursor: auto;
-  opacity: 0; /* JS fade in */
+  opacity: 1; /* 保持可見，讓 Preloader 能顯示 */
 }
 
 #root {
@@ -29,7 +29,15 @@ body {
 
 /* --- TYPOGRAPHY --- */
 .display { 
-  font-family: var(--font-display); 
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* Override for app header titles - make them darker */
+.app-header .display {
+  color: #000000 !important;
+  font-weight: 900;
+  opacity: 1 !important; /* Ensure visibility */
 }
 
 /* --- NOISE OVERLAY --- */

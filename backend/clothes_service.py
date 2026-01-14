@@ -146,10 +146,17 @@ class ClothesReconstructionService:
         for ext in ["*.ply", "*.obj", "*.glb"]:
             for file in self.output_dir.glob(ext):
                 name = file.stem.replace("_cloth", "")
+                
+                # 尋找對應的縮圖 (thumb)
+                thumb_name = f"{name}_thumb.jpg"
+                thumb_path = self.output_dir / thumb_name
+                thumbnail_url = f"/outputs/clothes/{thumb_name}" if thumb_path.exists() else None
+                
                 clothes_dict[name] = {
                     "name": name,
                     "url": f"/outputs/clothes/{file.name}",
-                    "format": file.suffix[1:]
+                    "format": file.suffix[1:],
+                    "thumbnail": thumbnail_url
                 }
         return list(clothes_dict.values())
 

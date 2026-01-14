@@ -1,0 +1,41 @@
+{
+  "common": {
+    "virtualFitting": "VIRTUAL FITTING",
+    "menu": "MENU",
+    "processing": "Processing...",
+    "success": "Success!",
+    "failed": "Failed",
+    "error": "Error",
+    "upload": "Upload",
+    "download": "Download",
+    "downloadDisabled": "Download Disabled",
+    "clickToView3D": "Click to view 3D",
+    "noPreview": "No Preview"
+  },
+  "nav": {
+    "fittingRoom": "Fitting Room",
+    "clothingFactory": "Clothing Factory"
+  },
+  "fittingRoom": {
+    "title": "3D Virtual Fitting Room",
+    "readyToBuild": "Ready to build your 3D body model",
+    "aiReconstructing": "AI is reconstructing your body... (may take 30s)",
+    "successReady": "Success! Your 3D body model is ready.",
+    "generateFailed": "Failed to generate 3D model.",
+    "serverError": "Server connection error.",
+    "uploadPhoto": "Upload Photo",
+    "presetLoaded": "Loaded preset: {name}",
+    "presets": "Presets"
+  },
+  "clothingFactory": {
+    "title": "Clothing Factory (Admin)",
+    "uploadToGenerate": "Upload a clothing photo to generate 3D model",
+    "aiGenerating": "AI is generating 3D clothing model... (this may take a few minutes)",
+    "successGenerated": "Success! 3D clothing model generated.",
+    "failedWithMessage": "Failed: {message}",
+    "unknownError": "Unknown error",
+    "uploadClothingPhoto": "Upload Clothing Photo",
+    "generatedClothes": "Generated 3D Clothes",
+    "noClothesYet": "No clothes generated yet."
+  }
+}

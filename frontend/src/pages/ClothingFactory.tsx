@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { CONFIG } from '../config';
 import { ClothViewer } from '../components/ClothViewer';
+import { useTranslation } from '../contexts/I18nContext';
+import { createTextAnimation } from '../utils/textAnimation';
 import { gsap } from 'gsap';
 import '../App.css';
 
@@ -13,7 +15,8 @@ interface ClothModel {
 
 export function ClothingFactory() {
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string>('上傳服裝照片以生成 3D 模型');
+  const { t } = useTranslation();
+  const [status, setStatus] = useState<string>(t('clothingFactory.uploadToGenerate'));
   const [clothes, setClothes] = useState<ClothModel[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
@@ -21,12 +24,12 @@ export function ClothingFactory() {
 
   useEffect(() => {
     if (headerRef.current && titleRef.current) {
-      gsap.from(titleRef.current, {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        delay: 0.2
+      createTextAnimation(titleRef.current, {
+        delay: 0.3,
+        duration: 1.2,
+        ease: 'power4.out',
+        blur: true,
+        scale: true,
       });
     }
   }, []);
@@ -53,7 +56,7 @@ export function ClothingFactory() {
     if (!file) return;
 
     setLoading(true);
-    setStatus('AI 正在生成 3D 服裝模型... (這可能需要幾分鐘)');
+    setStatus(t('clothingFactory.aiGenerating'));
 
     const formData = new FormData();
     formData.append('file', file);
@@ -67,7 +70,7 @@ export function ClothingFactory() {
       const data = await response.json();
       
       if (data.status === 'success') {
-        setStatus('成功！3D 服裝模型已生成。');
+        setStatus(t('clothingFactory.successGenerated'));
         fetchClothes(); // 刷新列表
         
         // Animate success
@@ -79,11 +82,13 @@ export function ClothingFactory() {
           ease: 'power2.inOut'
         });
       } else {
-        setStatus(`失敗: ${data.message || '未知錯誤'}`);
+        setStatus(t('clothingFactory.failedWithMessage', { 
+          message: data.message || t('clothingFactory.unknownError') 
+        }));
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setStatus('伺服器連接錯誤。');
+      setStatus(t('fittingRoom.serverError'));
     } finally {
       setLoading(false);
     }
@@ -92,10 +97,10 @@ export function ClothingFactory() {
   return (
     <div className="app-container">
       <header className="app-header" ref={headerRef}>
-        <h1 className="display" ref={titleRef}>服裝工廠 (管理員)</h1>
+        <h1 className="display" ref={titleRef}>{t('clothingFactory.title')}</h1>
         <div className="controls">
           <label className={`upload-btn ${loading ? 'disabled' : ''}`}>
-            {loading ? '處理中...' : '上傳服裝照片'}
+            {loading ? t('common.processing') : t('clothingFactory.uploadClothingPhoto')}
             <input 
               type="file" 
               accept="image/*" 
@@ -110,12 +115,12 @@ export function ClothingFactory() {
 
       <div className="main-content" style={{ padding: '2rem', display: 'block', overflowY: 'auto' }}>
         <h2 className="display" style={{ fontSize: '1.5rem', marginBottom: '1rem', fontWeight: 600 }}>
-          已生成的 3D 服裝
+          {t('clothingFactory.generatedClothes')}
         </h2>
         <div className="clothes-grid">
           {clothes.length === 0 && (
             <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'rgba(18, 18, 18, 0.5)', padding: '2rem' }}>
-              尚未生成任何服裝模型。
+              {t('clothingFactory.noClothesYet')}
             </p>
           )}
           {clothes.map((cloth, index) => (
@@ -137,7 +142,7 @@ export function ClothingFactory() {
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
                         <span style={{ fontSize: '3rem' }}>👕</span>
-                        <span style={{ color: 'rgba(18, 18, 18, 0.4)', fontSize: '0.875rem' }}>無預覽</span>
+                        <span style={{ color: 'rgba(18, 18, 18, 0.4)', fontSize: '0.875rem' }}>{t('common.noPreview')}</span>
                       </div>
                     )}
                     <div style={{
@@ -153,7 +158,7 @@ export function ClothingFactory() {
                       letterSpacing: '0.05em',
                       textAlign: 'center'
                     }}>
-                      點擊查看 3D 模型
+                      {t('common.clickToView3D')}
                     </div>
                   </div>
                 )}
@@ -161,7 +166,7 @@ export function ClothingFactory() {
               <p className="cloth-name">{cloth.name} ({cloth.format})</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
                 <span className="cloth-link" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                  下載已停用
+                  {t('common.downloadDisabled')}
                 </span>
               </div>
             </div>

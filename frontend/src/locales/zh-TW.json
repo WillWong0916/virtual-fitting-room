@@ -1,0 +1,41 @@
+{
+  "common": {
+    "virtualFitting": "虛擬試衣",
+    "menu": "選單",
+    "processing": "處理中...",
+    "success": "成功！",
+    "failed": "失敗",
+    "error": "錯誤",
+    "upload": "上傳",
+    "download": "下載",
+    "downloadDisabled": "下載已停用",
+    "clickToView3D": "點擊查看 3D 模型",
+    "noPreview": "無預覽"
+  },
+  "nav": {
+    "fittingRoom": "試衣間",
+    "clothingFactory": "服裝工廠"
+  },
+  "fittingRoom": {
+    "title": "3D 虛擬試衣間",
+    "readyToBuild": "準備建立您的 3D 身體模型",
+    "aiReconstructing": "AI 正在重建您的身體模型... (可能需要 30 秒)",
+    "successReady": "成功！您的 3D 身體模型已準備就緒。",
+    "generateFailed": "生成 3D 模型失敗。",
+    "serverError": "伺服器連接錯誤。",
+    "uploadPhoto": "上傳照片",
+    "presetLoaded": "已載入預設模型: {name}",
+    "presets": "預設模型"
+  },
+  "clothingFactory": {
+    "title": "服裝工廠 (管理員)",
+    "uploadToGenerate": "上傳服裝照片以生成 3D 模型",
+    "aiGenerating": "AI 正在生成 3D 服裝模型... (這可能需要幾分鐘)",
+    "successGenerated": "成功！3D 服裝模型已生成。",
+    "failedWithMessage": "失敗: {message}",
+    "unknownError": "未知錯誤",
+    "uploadClothingPhoto": "上傳服裝照片",
+    "generatedClothes": "已生成的 3D 服裝",
+    "noClothesYet": "尚未生成任何服裝模型。"
+  }
+}

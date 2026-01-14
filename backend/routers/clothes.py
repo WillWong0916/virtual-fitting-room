@@ -36,7 +36,7 @@ async def upload_cloth(file: UploadFile = File(...)):
         
         # 嘗試生成縮圖 (Thumbnail)
         thumb_filename = f"{Path(file_path).stem}_thumb.jpg"
-        thumb_path = Path("backend/outputs/clothes") / thumb_filename
+        thumb_path = clothes_service.output_dir / thumb_filename
         try:
             img = cv2.imread(str(file_path))
             if img is not None:

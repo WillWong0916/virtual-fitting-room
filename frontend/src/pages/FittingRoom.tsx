@@ -1,27 +1,39 @@
 import { useState, useEffect, useRef } from 'react';
 import { Scene } from '../components/Scene';
 import { Sidebar } from '../components/Sidebar';
-import { type PresetModel } from '../constants/presets';
+import { PRESET_MODELS, type PresetModel } from '../constants/presets';
 import { CONFIG } from '../config';
+import { useTranslation } from '../contexts/I18nContext';
+import { createTextAnimation } from '../utils/textAnimation';
 import { gsap } from 'gsap';
 import '../App.css';
 
 export function FittingRoom() {
-  const [modelUrl, setModelUrl] = useState<string | null>(null);
+  // 初始化時使用第一個預設模型
+  const [modelUrl, setModelUrl] = useState<string | null>(PRESET_MODELS[0]?.objUrl || null);
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<string>('準備建立您的 3D 身體模型');
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const { t, locale } = useTranslation();
+  const [status, setStatus] = useState<string>(t('fittingRoom.readyToBuild'));
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(PRESET_MODELS[0]?.id || null);
   const headerRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
+  // 當語言改變時更新 status
+  useEffect(() => {
+    if (!loading) {
+      setStatus(t('fittingRoom.readyToBuild'));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locale]);
+
   useEffect(() => {
     if (headerRef.current && titleRef.current) {
-      gsap.from(titleRef.current, {
-        y: 50,
-        opacity: 0,
-        duration: 1,
-        ease: 'power3.out',
-        delay: 0.2
+      createTextAnimation(titleRef.current, {
+        delay: 0.3,
+        duration: 1.2,
+        ease: 'power4.out',
+        blur: true,
+        scale: true,
       });
     }
   }, []);
@@ -32,7 +44,7 @@ export function FittingRoom() {
     if (!file) return;
 
     setLoading(true);
-    setStatus('AI 正在重建您的身體模型... (可能需要 30 秒)');
+    setStatus(t('fittingRoom.aiReconstructing'));
     setModelUrl(null);
     setSelectedPreset(null);
 
@@ -50,7 +62,7 @@ export function FittingRoom() {
       if (data.status === 'success' && data.models.length > 0) {
         const fullUrl = `${CONFIG.API_BASE_URL}${data.models[0]}`;
         setModelUrl(fullUrl);
-        setStatus('成功！您的 3D 身體模型已準備就緒。');
+        setStatus(t('fittingRoom.successReady'));
         
         // Animate success
         gsap.to(headerRef.current, {
@@ -61,11 +73,11 @@ export function FittingRoom() {
           ease: 'power2.inOut'
         });
       } else {
-        setStatus('生成 3D 模型失敗。');
+        setStatus(t('fittingRoom.generateFailed'));
       }
     } catch (error) {
       console.error('Upload error:', error);
-      setStatus('伺服器連接錯誤。');
+      setStatus(t('fittingRoom.serverError'));
     } finally {
       setLoading(false);
     }
@@ -75,16 +87,16 @@ export function FittingRoom() {
     if (loading) return;
     setModelUrl(preset.objUrl);
     setSelectedPreset(preset.id);
-    setStatus(`已載入預設模型: ${preset.name}`);
+    setStatus(t('fittingRoom.presetLoaded', { name: preset.name }));
   };
 
   return (
     <div className="app-container">
       <header className="app-header" ref={headerRef}>
-        <h1 className="display" ref={titleRef}>3D 虛擬試衣間</h1>
+        <h1 className="display" ref={titleRef}>{t('fittingRoom.title')}</h1>
         <div className="controls">
           <label className={`upload-btn ${loading ? 'disabled' : ''}`}>
-            {loading ? '處理中...' : '上傳照片'}
+            {loading ? t('common.processing') : t('fittingRoom.uploadPhoto')}
             <input 
               type="file" 
               accept="image/*" 
