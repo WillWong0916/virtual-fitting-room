@@ -8,6 +8,12 @@ router = APIRouter(
     tags=["body"],
 )
 
+# 添加新的 router 用於獲取 body 列表
+bodies_router = APIRouter(
+    prefix="/bodies",
+    tags=["bodies"],
+)
+
 # 定義路徑
 BASE_DIR = Path(__file__).parent.parent
 UPLOAD_DIR = BASE_DIR / "uploads"
@@ -50,3 +56,16 @@ async def upload_body(file: UploadFile = File(...)):
     finally:
         # 這裡不刪除檔案，保留作為記錄。如果需要自動清理，可以另外實作定時任務。
         pass
+
+@bodies_router.get("/")
+async def list_bodies():
+    """獲取預設 body 模型列表（用戶只能看到預設模型，不能看到其他用戶上傳的）"""
+    try:
+        # 只返回預設模型，不返回其他用戶上傳的模型
+        bodies = body_service.get_all_bodies(presets_only=True)
+        return {
+            "status": "success",
+            "bodies": bodies
+        }
+    except Exception as e:
+        return {"status": "error", "message": str(e)}

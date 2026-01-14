@@ -1,20 +1,27 @@
 import { useState, useEffect, useRef } from 'react';
 import { Scene } from '../components/Scene';
 import { Sidebar } from '../components/Sidebar';
-import { PRESET_MODELS, type PresetModel } from '../constants/presets';
 import { CONFIG } from '../config';
 import { useTranslation } from '../contexts/I18nContext';
 import { createTextAnimation } from '../utils/textAnimation';
 import { gsap } from 'gsap';
 import '../App.css';
 
+interface BodyModel {
+  name: string;
+  url: string;
+  format: string;
+  thumbnail?: string;
+  is_preset?: boolean;
+}
+
 export function FittingRoom() {
-  // 初始化時使用第一個預設模型
-  const [modelUrl, setModelUrl] = useState<string | null>(PRESET_MODELS[0]?.objUrl || null);
+  const [bodies, setBodies] = useState<BodyModel[]>([]);
+  const [modelUrl, setModelUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const { t, locale } = useTranslation();
   const [status, setStatus] = useState<string>(t('fittingRoom.readyToBuild'));
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(PRESET_MODELS[0]?.id || null);
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
@@ -25,6 +32,29 @@ export function FittingRoom() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locale]);
+
+  // 獲取 body 模型列表
+  const fetchBodies = async () => {
+    try {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/bodies`);
+      const data = await response.json();
+      if (data.status === 'success') {
+        setBodies(data.bodies || []);
+        // 如果有預設模型，使用第一個預設模型
+        const firstPreset = data.bodies?.find((b: BodyModel) => b.is_preset) || data.bodies?.[0];
+        if (firstPreset) {
+          setModelUrl(`${CONFIG.API_BASE_URL}${firstPreset.url}`);
+          setSelectedPreset(firstPreset.name);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch bodies:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchBodies();
+  }, []);
 
   useEffect(() => {
     if (headerRef.current && titleRef.current) {
@@ -83,10 +113,10 @@ export function FittingRoom() {
     }
   };
 
-  const handleSelectPreset = (preset: PresetModel) => {
+  const handleSelectPreset = (preset: BodyModel) => {
     if (loading) return;
-    setModelUrl(preset.objUrl);
-    setSelectedPreset(preset.id);
+    setModelUrl(`${CONFIG.API_BASE_URL}${preset.url}`);
+    setSelectedPreset(preset.name);
     setStatus(t('fittingRoom.presetLoaded', { name: preset.name }));
   };
 
@@ -113,7 +143,8 @@ export function FittingRoom() {
         <Sidebar 
           onSelectPreset={handleSelectPreset} 
           selectedPresetId={selectedPreset} 
-          loading={loading} 
+          loading={loading}
+          bodies={bodies}
         />
         <div className="scene-container">
           <Scene modelUrl={modelUrl} />

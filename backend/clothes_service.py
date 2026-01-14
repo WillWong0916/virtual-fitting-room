@@ -191,23 +191,63 @@ class ClothesReconstructionService:
                 progress_callback("error", 0, f"Error: {str(e)}")
             raise e
 
-    def get_all_clothes(self):
+    def get_all_clothes(self, presets_only=False):
+        """
+        獲取 clothes 模型列表
+        
+        Args:
+            presets_only: 如果為 True，只返回預設模型；如果為 False，返回所有模型（包括用戶上傳的）
+                        注意：ClothingFactory 是管理員頁面，默認顯示所有模型
+        """
         clothes_dict = {}
-        for ext in ["*.ply", "*.obj", "*.glb"]:
-            for file in self.output_dir.glob(ext):
-                name = file.stem.replace("_cloth", "")
-                
-                # 尋找對應的縮圖 (thumb)
-                thumb_name = f"{name}_thumb.jpg"
-                thumb_path = self.output_dir / thumb_name
-                thumbnail_url = f"/outputs/clothes/{thumb_name}" if thumb_path.exists() else None
-                
-                clothes_dict[name] = {
-                    "name": name,
-                    "url": f"/outputs/clothes/{file.name}",
-                    "format": file.suffix[1:],
-                    "thumbnail": thumbnail_url
-                }
+        
+        # 1. 獲取預設模型（如果存在 presets 目錄）
+        presets_dir = self.output_dir / "presets"
+        if presets_dir.exists():
+            for ext in ["*.ply", "*.obj", "*.glb"]:
+                for file in presets_dir.glob(ext):
+                    name = file.stem.replace("_cloth", "")
+                    
+                    # 尋找對應的縮圖
+                    thumb_name = f"{name}_thumb.jpg"
+                    thumb_path = presets_dir / thumb_name
+                    thumbnail_url = f"/outputs/clothes/presets/{thumb_name}" if thumb_path.exists() else None
+                    
+                    clothes_dict[name] = {
+                        "name": name,
+                        "url": f"/outputs/clothes/presets/{file.name}",
+                        "format": file.suffix[1:],
+                        "thumbnail": thumbnail_url,
+                        "is_preset": True
+                    }
+        
+        # 2. 如果 presets_only 為 False，也包含動態生成的 clothes
+        if not presets_only:
+            for ext in ["*.ply", "*.obj", "*.glb"]:
+                for file in self.output_dir.glob(ext):
+                    # 跳過 presets 目錄
+                    if "presets" in str(file):
+                        continue
+                    
+                    name = file.stem.replace("_cloth", "")
+                    
+                    # 如果已經有預設模型，跳過（預設模型優先）
+                    if name in clothes_dict:
+                        continue
+                    
+                    # 尋找對應的縮圖 (thumb)
+                    thumb_name = f"{name}_thumb.jpg"
+                    thumb_path = self.output_dir / thumb_name
+                    thumbnail_url = f"/outputs/clothes/{thumb_name}" if thumb_path.exists() else None
+                    
+                    clothes_dict[name] = {
+                        "name": name,
+                        "url": f"/outputs/clothes/{file.name}",
+                        "format": file.suffix[1:],
+                        "thumbnail": thumbnail_url,
+                        "is_preset": False
+                    }
+        
         return list(clothes_dict.values())
 
 # 建立全域單例

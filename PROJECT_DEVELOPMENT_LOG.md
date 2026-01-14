@@ -203,6 +203,39 @@ virtual-fitting-room/          (總專案資料夾)
     *   側邊欄自動標記第一個預設模型為已選中狀態
     *   提升用戶首次體驗，無需手動選擇即可看到效果
 
+### 第 16 章：統一模型管理與隱私保護 (2026-01-13)
+
+#### 1. 統一模型存儲架構
+*   **預設模型集中管理**:
+    *   將預設 Body 模型移至 `backend/outputs/bodies/presets/` 目錄
+    *   將預設 Clothing 模型移至 `backend/outputs/clothes/presets/` 目錄
+    *   統一使用後端 API 提供模型列表，移除前端硬編碼
+*   **API 端點擴展**:
+    *   新增 `GET /bodies` 端點，返回所有預設 Body 模型
+    *   更新 `GET /clothes` 端點，支援預設和動態生成的模型
+    *   前端改為從 API 動態獲取模型列表
+
+#### 2. 用戶隱私保護
+*   **模型可見性控制**:
+    *   `get_all_bodies()` 默認只返回預設模型 (`presets_only=True`)
+    *   普通用戶在 FittingRoom 頁面只能看到預設 Body 模型
+    *   用戶上傳的模型不會被其他用戶看到
+    *   ClothingFactory 作為管理員頁面，仍可查看所有生成的衣物模型
+*   **安全隔離**:
+    *   動態生成的模型存儲在 `backend/outputs/bodies/` 和 `backend/outputs/clothes/` 根目錄
+    *   預設模型存儲在各自的 `presets/` 子目錄中
+    *   API 層面實現訪問控制，確保隱私安全
+
+#### 3. 代碼清理與優化 (2026-01-13)
+*   **移除未使用代碼**:
+    *   刪除 `frontend/src/constants/presets.ts`（已改為 API 獲取）
+    *   移除 `backend/routers/clothes.py` 中未使用的 `asyncio` 導入
+    *   更新 API 文檔，移除未使用的端點說明
+*   **代碼質量提升**:
+    *   確保所有保留的代碼都有明確用途
+    *   優化導入語句，移除冗餘依賴
+    *   保持代碼庫整潔，提升可維護性
+
 ---
 
 ## 7. 技術債務與待優化項目

@@ -96,5 +96,72 @@ class BodyReconstructionService:
 
         return generated_files
 
+    def get_all_bodies(self, presets_only=True):
+        """
+        獲取 body 模型列表
+        
+        Args:
+            presets_only: 如果為 True，只返回預設模型；如果為 False，返回所有模型（包括用戶上傳的）
+        """
+        bodies_dict = {}
+        
+        # 只獲取預設模型（用戶不應該看到其他用戶上傳的模型）
+        presets_dir = self.output_dir / "presets"
+        if presets_dir.exists():
+            for ext in ["*.obj"]:
+                for file in presets_dir.glob(ext):
+                    # 從文件名提取基礎名稱（例如 FullBody01_body_0.obj -> FullBody01）
+                    name = file.stem.replace("_body_0", "").replace("_body_1", "")
+                    
+                    # 尋找對應的縮圖（嘗試多種命名方式）
+                    thumb_candidates = [
+                        f"{name}.jpg",
+                        f"{name}_thumb.jpg",
+                        f"{file.stem}.jpg"
+                    ]
+                    thumbnail_url = None
+                    for thumb_name in thumb_candidates:
+                        thumb_path = presets_dir / thumb_name
+                        if thumb_path.exists():
+                            thumbnail_url = f"/outputs/bodies/presets/{thumb_name}"
+                            break
+                    
+                    bodies_dict[name] = {
+                        "name": name,
+                        "url": f"/outputs/bodies/presets/{file.name}",
+                        "format": file.suffix[1:],
+                        "thumbnail": thumbnail_url,
+                        "is_preset": True
+                    }
+        
+        # 如果 presets_only 為 False，也包含動態生成的 bodies（僅用於管理員）
+        if not presets_only:
+            for ext in ["*.obj"]:
+                for file in self.output_dir.glob(ext):
+                    # 跳過 presets 目錄
+                    if "presets" in str(file):
+                        continue
+                    
+                    name = file.stem.replace("_body_0", "").replace("_body_1", "")
+                    
+                    # 如果已經有預設模型，跳過
+                    if name in bodies_dict:
+                        continue
+                    
+                    # 尋找對應的縮圖（如果有的話）
+                    thumb_name = f"{name}_thumb.jpg"
+                    thumb_path = self.output_dir / thumb_name
+                    thumbnail_url = f"/outputs/bodies/{thumb_name}" if thumb_path.exists() else None
+                    
+                    bodies_dict[name] = {
+                        "name": name,
+                        "url": f"/outputs/bodies/{file.name}",
+                        "format": file.suffix[1:],
+                        "thumbnail": thumbnail_url,
+                        "is_preset": False
+                    }
+        
+        return list(bodies_dict.values())
+
 # 建立全域單例，讓 FastAPI 呼叫
 body_service = BodyReconstructionService()

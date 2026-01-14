@@ -62,6 +62,7 @@ app.mount("/outputs", StaticFiles(directory=str(OUTPUT_DIR)), name="outputs")
 
 # Include routers
 app.include_router(body.router)
+app.include_router(body.bodies_router)
 app.include_router(clothes.router)
 
 @app.get("/")
@@ -70,7 +71,8 @@ async def root():
         "message": "3D Fitting Room API is running",
         "endpoints": {
             "upload_body": "/upload/body",
-            "upload_cloth": "/clothes/upload/cloth",
+            "list_bodies": "/bodies",
+            "upload_cloth_stream": "/clothes/upload/cloth/stream",
             "list_clothes": "/clothes",
             "static_models": "/outputs"
         }
