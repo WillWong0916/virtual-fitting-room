@@ -15,6 +15,9 @@ interface ClothModel {
 
 export function ClothingFactory() {
   const [loading, setLoading] = useState(false);
+  const [fetchingClothes, setFetchingClothes] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [uploadThumbnail, setUploadThumbnail] = useState<string | null>(null);
   const { t } = useTranslation();
   const [status, setStatus] = useState<string>(t('clothingFactory.uploadToGenerate'));
   const [clothes, setClothes] = useState<ClothModel[]>([]);
@@ -35,15 +38,34 @@ export function ClothingFactory() {
   }, []);
 
   // 獲取已有的衣物列表
-  const fetchClothes = async () => {
+  const fetchClothes = async (preserveOnError = false) => {
+    // 如果正在上傳處理中，不要更新列表（避免清空現有列表）
+    if (loading) {
+      console.log('Skipping fetchClothes: upload in progress');
+      return;
+    }
+    
+    setFetchingClothes(true);
     try {
       const response = await fetch(`${CONFIG.API_BASE_URL}/clothes`);
       const data = await response.json();
       if (data.status === 'success') {
-        setClothes(data.clothes);
+        setClothes(data.clothes || []); // 確保總是設置為數組
+      } else {
+        console.error('Failed to fetch clothes:', data.message);
+        // 如果 preserveOnError 為 true，保持現有列表
+        if (!preserveOnError) {
+          setClothes([]);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch clothes:', error);
+      // 如果 preserveOnError 為 true，保持現有列表
+      if (!preserveOnError) {
+        setClothes([]);
+      }
+    } finally {
+      setFetchingClothes(false);
     }
   };
 
@@ -56,41 +78,100 @@ export function ClothingFactory() {
     if (!file) return;
 
     setLoading(true);
+    setProgress(0);
     setStatus(t('clothingFactory.aiGenerating'));
+    
+    // 創建本地縮圖預覽
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setUploadThumbnail(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
-      const response = await fetch(`${CONFIG.API_BASE_URL}/clothes/upload/cloth`, {
+      const response = await fetch(`${CONFIG.API_BASE_URL}/clothes/upload/cloth/stream`, {
         method: 'POST',
         body: formData,
       });
 
-      const data = await response.json();
-      
-      if (data.status === 'success') {
-        setStatus(t('clothingFactory.successGenerated'));
-        fetchClothes(); // 刷新列表
-        
-        // Animate success
-        gsap.to(headerRef.current, {
-          scale: 1.02,
-          duration: 0.3,
-          yoyo: true,
-          repeat: 1,
-          ease: 'power2.inOut'
-        });
-      } else {
-        setStatus(t('clothingFactory.failedWithMessage', { 
-          message: data.message || t('clothingFactory.unknownError') 
-        }));
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              setProgress(data.progress || 0);
+              setStatus(data.message || t('clothingFactory.aiGenerating'));
+              
+              // 更新縮圖 URL（如果後端提供了）
+              if (data.thumbnail_url) {
+                setUploadThumbnail(`${CONFIG.API_BASE_URL}${data.thumbnail_url}`);
+              }
+              
+              // 處理完成
+              if (data.stage === 'complete') {
+                setStatus(t('clothingFactory.successGenerated'));
+                setProgress(100);
+                
+                // 延遲一點再刷新列表，確保文件已寫入
+                setTimeout(() => {
+                  fetchClothes();
+                  setUploadThumbnail(null);
+                }, 500);
+                
+                // Animate success
+                gsap.to(headerRef.current, {
+                  scale: 1.02,
+                  duration: 0.3,
+                  yoyo: true,
+                  repeat: 1,
+                  ease: 'power2.inOut'
+                });
+              }
+              
+              // 處理錯誤
+              if (data.stage === 'error') {
+                setStatus(t('clothingFactory.failedWithMessage', { 
+                  message: data.message || t('clothingFactory.unknownError') 
+                }));
+                setUploadThumbnail(null);
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e);
+            }
+          }
+        }
       }
     } catch (error) {
       console.error('Upload error:', error);
       setStatus(t('fittingRoom.serverError'));
+      setUploadThumbnail(null);
     } finally {
       setLoading(false);
+      setProgress(0);
     }
   };
 
@@ -110,7 +191,70 @@ export function ClothingFactory() {
             />
           </label>
           <p className="status-text">{status}</p>
+          {loading && (
+            <div style={{ 
+              width: '100%', 
+              marginTop: '0.5rem',
+              background: 'rgba(18, 18, 18, 0.1)',
+              borderRadius: '4px',
+              overflow: 'hidden'
+            }}>
+              <div style={{
+                height: '4px',
+                background: 'var(--c-accent)',
+                width: `${progress}%`,
+                transition: 'width 0.3s ease',
+                borderRadius: '4px'
+              }} />
+            </div>
+          )}
         </div>
+        {loading && uploadThumbnail && (
+          <div style={{
+            marginTop: '1rem',
+            padding: '1rem',
+            background: 'rgba(18, 18, 18, 0.05)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem'
+          }}>
+            <img 
+              src={uploadThumbnail} 
+              alt="Upload preview" 
+              style={{
+                width: '80px',
+                height: '80px',
+                objectFit: 'cover',
+                borderRadius: '4px',
+                border: '1px solid rgba(18, 18, 18, 0.1)'
+              }}
+            />
+            <div style={{ flex: 1 }}>
+              <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 600, marginBottom: '0.25rem' }}>
+                {t('clothingFactory.aiGenerating')}
+              </p>
+              <div style={{ 
+                width: '100%', 
+                background: 'rgba(18, 18, 18, 0.1)',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                height: '6px'
+              }}>
+                <div style={{
+                  height: '100%',
+                  background: 'var(--c-accent)',
+                  width: `${progress}%`,
+                  transition: 'width 0.3s ease',
+                  borderRadius: '4px'
+                }} />
+              </div>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: 'rgba(18, 18, 18, 0.6)' }}>
+                {progress.toFixed(0)}%
+              </p>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="main-content" style={{ padding: '2rem', display: 'block', overflowY: 'auto' }}>
@@ -118,9 +262,22 @@ export function ClothingFactory() {
           {t('clothingFactory.generatedClothes')}
         </h2>
         <div className="clothes-grid">
-          {clothes.length === 0 && (
+          {/* 只有在沒有衣物且不在加載時才顯示 "No clothes yet" */}
+          {!loading && !fetchingClothes && clothes.length === 0 && (
             <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'rgba(18, 18, 18, 0.5)', padding: '2rem' }}>
               {t('clothingFactory.noClothesYet')}
+            </p>
+          )}
+          {/* 在加載期間，如果有衣物就顯示，如果沒有就顯示加載提示 */}
+          {loading && clothes.length === 0 && (
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'rgba(18, 18, 18, 0.5)', padding: '2rem' }}>
+              {t('clothingFactory.aiGenerating')}...
+            </p>
+          )}
+          {/* 在獲取衣物列表時顯示加載提示 */}
+          {fetchingClothes && clothes.length === 0 && !loading && (
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'rgba(18, 18, 18, 0.5)', padding: '2rem' }}>
+              {t('common.loading')}...
             </p>
           )}
           {clothes.map((cloth, index) => (

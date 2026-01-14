@@ -10,7 +10,8 @@
     "download": "Download",
     "downloadDisabled": "Download Disabled",
     "clickToView3D": "Click to view 3D",
-    "noPreview": "No Preview"
+    "noPreview": "No Preview",
+    "loading": "Loading"
   },
   "nav": {
     "fittingRoom": "Fitting Room",

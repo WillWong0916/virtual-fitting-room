@@ -580,12 +580,18 @@ def to_glb(
         debug (bool): Whether to print debug information.
         verbose (bool): Whether to print progress.
     """
+    logger.info("=== Starting to_glb conversion ===")
+    logger.info(f"  - Mesh vertices: {mesh.vertices.shape[0]}, faces: {mesh.faces.shape[0]}")
+    logger.info(f"  - Options: simplify={simplify}, texture_size={texture_size}")
+    logger.info(f"  - Postprocessing: mesh={with_mesh_postprocess}, texture_baking={with_texture_baking}")
+    
     vertices = mesh.vertices.float().cpu().numpy()
     faces = mesh.faces.cpu().numpy()
     vert_colors = mesh.vertex_attrs[:, :3].cpu().numpy()
 
     if with_mesh_postprocess:
         # mesh postprocess
+        logger.info("Starting mesh postprocessing (simplification, hole filling, etc.)...")
         vertices, faces = postprocess_mesh(
             vertices,
             faces,
@@ -599,19 +605,24 @@ def to_glb(
             debug=debug,
             verbose=verbose,
         )
+        logger.info(f"Mesh postprocessing completed. Final vertices: {vertices.shape[0]}, faces: {faces.shape[0]}")
 
     if with_texture_baking:
         # parametrize mesh
         vertices, faces, uvs = parametrize_mesh(vertices, faces)
         logger.info("Baking texture ...")
+        logger.info("  Step 1: Rendering multiview observations (100 views, this may take 30-60 seconds)...")
 
         # bake texture
         observations, extrinsics, intrinsics = render_multiview(
             app_rep, resolution=1024, nviews=100
         )
+        logger.info(f"  Step 1 completed: Rendered {len(observations)} views")
+        logger.info("  Step 2: Preparing masks and camera parameters...")
         masks = [np.any(observation > 0, axis=-1) for observation in observations]
         extrinsics = [extrinsics[i].cpu().numpy() for i in range(len(extrinsics))]
         intrinsics = [intrinsics[i].cpu().numpy() for i in range(len(intrinsics))]
+        logger.info("  Step 3: Optimizing texture (2500 iterations, this may take 2-3 minutes)...")
         texture = bake_texture(
             vertices,
             faces,
@@ -623,9 +634,10 @@ def to_glb(
             texture_size=texture_size,
             mode="opt",
             lambda_tv=0.01,
-            verbose=verbose,
+            verbose=True,  # 強制顯示進度條
             rendering_engine=rendering_engine
         )
+        logger.info("  Step 3 completed: Texture optimization finished")
         texture = Image.fromarray(texture)
         material = trimesh.visual.material.PBRMaterial(
             roughnessFactor=1.0,
@@ -650,6 +662,7 @@ def to_glb(
             ),
         )
 
+    logger.info("=== to_glb conversion completed successfully ===")
     return mesh
 
 

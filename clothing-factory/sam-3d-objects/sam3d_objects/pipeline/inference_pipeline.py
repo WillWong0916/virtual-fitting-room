@@ -541,18 +541,20 @@ class InferencePipeline:
             f"Postprocessing mesh with option with_mesh_postprocess {with_mesh_postprocess}, with_texture_baking {with_texture_baking}..."
         )
         if "mesh" in outputs:
+            logger.info("Calling to_glb to convert mesh to GLB format...")
             glb = postprocessing_utils.to_glb(
                 outputs["gaussian"][0],
                 outputs["mesh"][0],
                 # Optional parameters
                 simplify=0.95,  # Ratio of triangles to remove in the simplification process
                 texture_size=1024,  # Size of the texture used for the GLB
-                verbose=False,
+                verbose=True,  # 啟用詳細日誌和進度條
                 with_mesh_postprocess=with_mesh_postprocess,
                 with_texture_baking=with_texture_baking,
                 use_vertex_color=use_vertex_color,
                 rendering_engine=self.rendering_engine,
             )
+            logger.info("to_glb completed successfully!")
 
         # glb.export("sample.glb")
         else:

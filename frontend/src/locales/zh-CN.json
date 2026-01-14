@@ -10,7 +10,8 @@
     "download": "下载",
     "downloadDisabled": "下载已停用",
     "clickToView3D": "点击查看 3D 模型",
-    "noPreview": "无预览"
+    "noPreview": "无预览",
+    "loading": "加载中"
   },
   "nav": {
     "fittingRoom": "试衣间",

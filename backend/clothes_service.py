@@ -59,17 +59,36 @@ class ClothesReconstructionService:
 
     def get_auto_mask(self, image_np):
         predictor = self.load_sam()
-        if predictor is None: return None
-        predictor.set_image(image_np)
-        h, w = image_np.shape[:2]
-        input_point = np.array([[w // 2, h // 2]])
-        input_label = np.array([1])
-        masks, scores, logits = predictor.predict(point_coords=input_point, point_labels=input_label, multimask_output=True)
-        mask_bool = masks[np.argmax(scores)]
-        kernel = np.ones((10, 10), np.uint8)
-        mask_uint8 = mask_bool.astype(np.uint8) * 255
-        dilated_mask = cv2.dilate(mask_uint8, kernel, iterations=1)
-        return dilated_mask > 0
+        if predictor is None: 
+            logger.warning("SAM predictor is None, using full image mask")
+            return None
+        
+        try:
+            logger.info(f"Setting image to SAM predictor (shape: {image_np.shape})...")
+            predictor.set_image(image_np)
+            logger.info("Image set to SAM predictor successfully")
+            
+            h, w = image_np.shape[:2]
+            input_point = np.array([[w // 2, h // 2]])
+            input_label = np.array([1])
+            
+            logger.info(f"Running SAM prediction (center point: {input_point[0]})...")
+            masks, scores, logits = predictor.predict(
+                point_coords=input_point, 
+                point_labels=input_label, 
+                multimask_output=True
+            )
+            logger.info(f"SAM prediction completed. Found {len(masks)} masks, best score: {np.max(scores):.4f}")
+            
+            mask_bool = masks[np.argmax(scores)]
+            kernel = np.ones((10, 10), np.uint8)
+            mask_uint8 = mask_bool.astype(np.uint8) * 255
+            dilated_mask = cv2.dilate(mask_uint8, kernel, iterations=1)
+            logger.info(f"Mask processing completed. Mask shape: {dilated_mask.shape}")
+            return dilated_mask > 0
+        except Exception as e:
+            logger.error(f"Error in get_auto_mask: {e}", exc_info=True)
+            return None
 
     def load_model(self):
         if self.inference is None:
@@ -102,32 +121,60 @@ class ClothesReconstructionService:
         mesh.vertices -= mesh.center_mass
         return mesh
 
-    def process_image(self, image_path: str):
+    def process_image(self, image_path: str, progress_callback=None):
+        """
+        處理圖片並生成 3D 模型
+        
+        Args:
+            image_path: 圖片路徑
+            progress_callback: 可選的進度回調函數，接收 (stage, progress, message) 參數
+                - stage: 階段名稱 (str)
+                - progress: 進度百分比 (0-100) (float)
+                - message: 進度消息 (str)
+        """
+        def emit_progress(stage, progress, message):
+            if progress_callback:
+                progress_callback(stage, progress, message)
+            logger.info(f"[{stage}] {progress:.1f}% - {message}")
+        
         inf = self.load_model()
         img_pil = Image.open(image_path).convert("RGB")
         img_np = np.array(img_pil)
         
-        logger.info("Running Auto-Masking with SAM...")
+        emit_progress("masking", 5, "Running Auto-Masking with SAM...")
         mask_bool = self.get_auto_mask(img_np)
-        if mask_bool is None: mask_bool = np.ones(img_np.shape[:2], dtype=bool)
+        if mask_bool is None: 
+            logger.warning("Auto-masking failed, using full image mask")
+            mask_bool = np.ones(img_np.shape[:2], dtype=bool)
+        else:
+            logger.info(f"Auto-mask generated successfully. Mask coverage: {np.sum(mask_bool) / mask_bool.size * 100:.2f}%")
+        emit_progress("masking", 10, "Auto-masking completed")
 
-        logger.info("Starting High-Quality Native 3D reconstruction...")
+        emit_progress("preparation", 15, "Starting High-Quality Native 3D reconstruction...")
         try:
+            emit_progress("preparation", 20, "Merging mask to RGBA image...")
             rgba_image = inf.merge_mask_to_rgba(img_np, mask_bool)
+            logger.info(f"RGBA image prepared. Shape: {rgba_image.shape}")
+
+            emit_progress("inference", 25, "Running inference pipeline...")
+            emit_progress("inference", 30, "Stage 1: Sampling sparse structure...")
             
             with torch.no_grad():
                 output = inf._pipeline.run(
                     rgba_image, None, seed=42,
                     stage1_only=False,
-                    with_mesh_postprocess=True, # 使用 MoGe 版本 utils3d 的原生意實作
+                    with_mesh_postprocess=True,
                     with_texture_baking=True,    
                     with_layout_postprocess=False,
                     use_vertex_color=False       
                 )
             
+            emit_progress("inference", 70, "Inference pipeline completed!")
+            
             if not output: return None
             base_name = Path(image_path).stem
 
+            emit_progress("export", 85, "Exporting GLB file...")
             mesh_obj = output.get("glb")
             if mesh_obj is not None:
                 glb_path = self.output_dir / f"{base_name}_cloth.glb"
@@ -135,10 +182,13 @@ class ClothesReconstructionService:
                     mesh_obj = self.fix_mesh_orientation(mesh_obj)
                     mesh_obj.export(str(glb_path))
                 logger.info(f"Success! Native textured GLB saved: {glb_path}")
+                emit_progress("export", 100, "Success! 3D model generated.")
                 return str(glb_path)
 
         except Exception as e:
             logger.error(f"Native 3D Reconstruction failed: {e}", exc_info=True)
+            if progress_callback:
+                progress_callback("error", 0, f"Error: {str(e)}")
             raise e
 
     def get_all_clothes(self):
