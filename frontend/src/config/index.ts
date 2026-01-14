@@ -1,5 +1,5 @@
 export const CONFIG = {
-  API_BASE_URL: 'http://localhost:8000',
+  API_BASE_URL: 'http://willwong0916.asuscomm.com:8000',
   DEFAULT_ENV: 'sunset',
 };
 
