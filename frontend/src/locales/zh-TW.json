@@ -11,7 +11,10 @@
     "downloadDisabled": "下載已停用",
     "clickToView3D": "點擊查看 3D 模型",
     "noPreview": "無預覽",
-    "loading": "載入中"
+    "loading": "載入中",
+    "invalidFileType": "不支援的檔案類型，請上傳圖片檔案 (JPG, PNG, WEBP)",
+    "fileTooLarge": "檔案大小超過限制，最大允許 {maxSize}MB",
+    "fileRequired": "請選擇要上傳的檔案"
   },
   "nav": {
     "fittingRoom": "試衣間",
@@ -26,7 +29,13 @@
     "serverError": "伺服器連接錯誤。",
     "uploadPhoto": "上傳照片",
     "presetLoaded": "已載入預設模型: {name}",
-    "presets": "預設模型"
+    "presets": "預設模型",
+    "tabBodies": "人體模型",
+    "tabClothes": "衣物",
+    "selectCloth": "選擇衣物",
+    "clothSelected": "已選擇: {name}",
+    "noClothesAvailable": "暫無可用衣物",
+    "fittingNotAvailable": "暫時未能提供試衣服務"
   },
   "clothingFactory": {
     "title": "服裝工廠 (管理員)",

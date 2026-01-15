@@ -11,7 +11,10 @@
     "downloadDisabled": "下载已停用",
     "clickToView3D": "点击查看 3D 模型",
     "noPreview": "无预览",
-    "loading": "加载中"
+    "loading": "加载中",
+    "invalidFileType": "不支持的檔案類型，請上傳圖片檔案 (JPG, PNG, WEBP)",
+    "fileTooLarge": "檔案大小超過限制，最大允許 {maxSize}MB",
+    "fileRequired": "請選擇要上傳的檔案"
   },
   "nav": {
     "fittingRoom": "试衣间",
@@ -26,7 +29,13 @@
     "serverError": "服务器连接错误。",
     "uploadPhoto": "上传照片",
     "presetLoaded": "已载入预设模型: {name}",
-    "presets": "预设模型"
+    "presets": "预设模型",
+    "tabBodies": "人体模型",
+    "tabClothes": "衣物",
+    "selectCloth": "选择衣物",
+    "clothSelected": "已选择: {name}",
+    "noClothesAvailable": "暂无可用衣物",
+    "fittingNotAvailable": "暂时未能提供试衣服务"
   },
   "clothingFactory": {
     "title": "服装工厂 (管理员)",

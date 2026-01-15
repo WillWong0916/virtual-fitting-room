@@ -361,6 +361,54 @@
   z-index: 5;
 }
 
+.sidebar-tabs {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(18, 18, 18, 0.1);
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(18, 18, 18, 0.5);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: var(--font-body);
+  position: relative;
+  border-radius: 0;
+}
+
+.sidebar-tab::after {
+  content: '';
+  position: absolute;
+  bottom: -0.75rem;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--c-dark);
+  transition: width 0.3s ease;
+}
+
+.sidebar-tab:hover {
+  color: rgba(18, 18, 18, 0.8);
+}
+
+.sidebar-tab.active {
+  color: var(--c-dark);
+}
+
+.sidebar-tab.active::after {
+  width: 100%;
+}
+
 .presets-panel h3 {
   margin: 0;
   font-size: 0.875rem;
@@ -513,6 +561,46 @@ canvas {
   border-bottom-color: var(--c-dark);
 }
 
+/* --- TOAST NOTIFICATION --- */
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  background-color: rgba(18, 18, 18, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: var(--c-bg);
+  padding: 1rem 1.5rem;
+  border-radius: 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  min-width: 300px;
+  max-width: 90vw;
+  font-family: var(--font-body);
+}
+
+.toast-icon {
+  font-size: 1.5rem;
+  flex-shrink: 0;
+}
+
+.toast-message {
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
 /* --- RESPONSIVE --- */
 @media (max-width: 768px) {
   .nav-modern {
@@ -595,5 +683,18 @@ canvas {
     max-width: 100%;
     text-align: left;
     font-size: 0.7rem;
+  }
+  
+  .toast {
+    min-width: 280px;
+    padding: 0.875rem 1.25rem;
+  }
+  
+  .toast-icon {
+    font-size: 1.25rem;
+  }
+  
+  .toast-message {
+    font-size: 0.75rem;
   }
 }

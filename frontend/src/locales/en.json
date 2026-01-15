@@ -11,7 +11,10 @@
     "downloadDisabled": "Download Disabled",
     "clickToView3D": "Click to view 3D",
     "noPreview": "No Preview",
-    "loading": "Loading"
+    "loading": "Loading",
+    "invalidFileType": "Unsupported file type. Please upload an image file (JPG, PNG, WEBP)",
+    "fileTooLarge": "File size exceeds limit. Maximum allowed: {maxSize}MB",
+    "fileRequired": "Please select a file to upload"
   },
   "nav": {
     "fittingRoom": "Fitting Room",
@@ -26,7 +29,13 @@
     "serverError": "Server connection error.",
     "uploadPhoto": "Upload Photo",
     "presetLoaded": "Loaded preset: {name}",
-    "presets": "Presets"
+    "presets": "Presets",
+    "tabBodies": "Bodies",
+    "tabClothes": "Clothes",
+    "selectCloth": "Select Clothing",
+    "clothSelected": "Selected: {name}",
+    "noClothesAvailable": "No clothes available",
+    "fittingNotAvailable": "Fitting service is temporarily unavailable"
   },
   "clothingFactory": {
     "title": "Clothing Factory (Admin)",
