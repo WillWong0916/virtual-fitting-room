@@ -3,6 +3,11 @@ import shutil
 from pathlib import Path
 from body_service import body_service
 
+# 檔案驗證設定
+ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
 router = APIRouter(
     prefix="/upload",
     tags=["body"],
@@ -24,11 +29,27 @@ async def upload_body(file: UploadFile = File(...)):
     """
     接收前端上傳的人體照片，執行 AI 生成，並回傳 .obj 檔案的 URL
     """
-    # 1. 儲存上傳的檔案
+    # 驗證檔案類型
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支援的檔案類型。請上傳圖片檔案 (JPG, PNG, WEBP)。收到: {file.content_type}"
+        )
+    
+    # 驗證檔案大小（需要讀取檔案內容來檢查大小）
+    file_content = await file.read()
+    file_size = len(file_content)
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"檔案大小超過限制。最大允許 {MAX_FILE_SIZE_MB}MB，收到: {file_size / (1024 * 1024):.2f}MB"
+        )
+    
+    # 1. 儲存上傳的檔案（直接寫入已讀取的內容）
     file_path = UPLOAD_DIR / file.filename
     try:
         with file_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(file_content)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save upload: {e}")
     

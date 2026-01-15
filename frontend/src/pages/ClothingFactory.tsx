@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { CONFIG } from '../config';
 import { ClothViewer } from '../components/ClothViewer';
+import { Toast } from '../components/Toast';
 import { useTranslation } from '../contexts/I18nContext';
 import { createTextAnimation } from '../utils/textAnimation';
+import { validateImageFile, MAX_FILE_SIZE_MB } from '../utils/fileValidation';
 import { gsap } from 'gsap';
 import '../App.css';
 
@@ -22,6 +24,7 @@ export function ClothingFactory() {
   const [status, setStatus] = useState<string>(t('clothingFactory.uploadToGenerate'));
   const [clothes, setClothes] = useState<ClothModel[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
 
@@ -75,7 +78,23 @@ export function ClothingFactory() {
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file) return;
+    
+    // 驗證檔案
+    const validation = validateImageFile(file);
+    if (!validation.valid) {
+      let errorMessage = '';
+      if (validation.error === 'fileRequired') {
+        errorMessage = t('common.fileRequired');
+      } else if (validation.error === 'invalidFileType') {
+        errorMessage = t('common.invalidFileType');
+      } else if (validation.error === 'fileTooLarge') {
+        errorMessage = t('common.fileTooLarge', { maxSize: MAX_FILE_SIZE_MB.toString() });
+      }
+      setToastMessage(errorMessage);
+      // 重置 input
+      event.target.value = '';
+      return;
+    }
 
     setLoading(true);
     setProgress(0);
@@ -86,10 +105,10 @@ export function ClothingFactory() {
     reader.onload = (e) => {
       setUploadThumbnail(e.target?.result as string);
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(file!);
 
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', file!);
 
     try {
       const response = await fetch(`${CONFIG.API_BASE_URL}/clothes/upload/cloth/stream`, {
@@ -330,6 +349,14 @@ export function ClothingFactory() {
           ))}
         </div>
       </div>
+      
+      {toastMessage && (
+        <Toast 
+          message={toastMessage} 
+          onClose={() => setToastMessage(null)}
+          duration={3000}
+        />
+      )}
     </div>
   );
 }

@@ -16,16 +16,38 @@ router = APIRouter(prefix="/clothes", tags=["clothes"])
 UPLOAD_DIR = Path("uploads/clothes")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
+# 檔案驗證設定
+ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+MAX_FILE_SIZE_MB = 10
+MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
 @router.post("/upload/cloth")
 async def upload_cloth(file: UploadFile = File(...)):
     """上傳衣物照片並生成 3D 模型"""
     logger.info(f"Received clothing upload request: {file.filename}")
+    
+    # 驗證檔案類型
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支援的檔案類型。請上傳圖片檔案 (JPG, PNG, WEBP)。收到: {file.content_type}"
+        )
+    
+    # 驗證檔案大小
+    file_content = await file.read()
+    file_size = len(file_content)
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"檔案大小超過限制。最大允許 {MAX_FILE_SIZE_MB}MB，收到: {file_size / (1024 * 1024):.2f}MB"
+        )
+    
     try:
         # 1. 儲存上傳的檔案
         file_path = UPLOAD_DIR / file.filename
         logger.info(f"Saving upload to {file_path}")
         with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+            buffer.write(file_content)
         
         # 2. 呼叫 AI 服務進行處理
         logger.info("Calling clothes_service.process_image...")
@@ -66,6 +88,22 @@ async def upload_cloth_stream(file: UploadFile = File(...)):
     """上傳衣物照片並生成 3D 模型，使用 SSE 推送進度更新"""
     logger.info(f"Received clothing upload request (with progress): {file.filename}")
     
+    # 驗證檔案類型
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"不支援的檔案類型。請上傳圖片檔案 (JPG, PNG, WEBP)。收到: {file.content_type}"
+        )
+    
+    # 驗證檔案大小
+    file_content = await file.read()
+    file_size = len(file_content)
+    if file_size > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"檔案大小超過限制。最大允許 {MAX_FILE_SIZE_MB}MB，收到: {file_size / (1024 * 1024):.2f}MB"
+        )
+    
     async def generate_progress():
         try:
             # 1. 儲存上傳的檔案
@@ -73,7 +111,7 @@ async def upload_cloth_stream(file: UploadFile = File(...)):
             logger.info(f"Saving upload to {file_path}")
             
             with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
+                buffer.write(file_content)
             
             # 生成縮圖 URL（用於顯示）
             thumb_filename = f"{Path(file_path).stem}_thumb.jpg"

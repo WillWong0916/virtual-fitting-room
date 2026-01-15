@@ -29,7 +29,7 @@
 ## Windows Development (Clothing Factory)
 - When working in `clothing-factory/`, assume **PowerShell** or **WSL2**.
 - Focus on **CUDA** compatibility and **PyTorch3D** specific issues.
-- Outputs should target `frontend/public/models/` for easy sharing.
+- Outputs should be saved in `backend/outputs/` and served via `/outputs` mount.
 
 ## File Naming Conventions
 - Generated bodies: `{image_name}_body_{index}.obj`
