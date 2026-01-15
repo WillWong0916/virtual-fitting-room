@@ -47,7 +47,7 @@ virtual-fitting-room/          (總專案資料夾)
 ├── backend/                   (FastAPI 主伺服器)
 │   ├── sam-3d-body/           (人體 AI 模型組件)
 │   └── outputs/               (存放生成的模型資源)
-└── clothing-factory/          (衣服生產工廠)
+└── clothing-factory/          (服裝製作)
     └── sam-3d-objects/        (服裝 AI 模型組件)
 ```
 

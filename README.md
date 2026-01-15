@@ -8,7 +8,7 @@
 
 - **Windows (主要開發與生產環境)**: 利用 RTX 4090 (CUDA) 進行高速 AI 推論。
     - **SAM 3D Body**: 人體生成速度僅需 **3 秒**。
-    - **SAM 3D Objects**: 衣服工廠核心，支援高品質材質烘焙。
+    - **SAM 3D Objects**: 服裝製作核心，支援高品質材質烘焙。
     - **API 伺服器**: FastAPI 驅動的後端服務。
     - **遠程開發支援**: 提供 SSH 服務，支援 Mac 遠程連接進行開發。
     - **網絡配置**: 配置 DDNS 和 Port Forwarding，支援從外網訪問 Frontend 和 Backend。

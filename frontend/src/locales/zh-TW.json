@@ -18,7 +18,7 @@
   },
   "nav": {
     "fittingRoom": "試衣間",
-    "clothingFactory": "服裝工廠"
+    "clothingFactory": "服裝製作"
   },
   "fittingRoom": {
     "title": "3D 虛擬試衣間",
@@ -38,7 +38,7 @@
     "fittingNotAvailable": "暫時未能提供試衣服務"
   },
   "clothingFactory": {
-    "title": "服裝工廠 (管理員)",
+    "title": "服裝製作 (管理員)",
     "uploadToGenerate": "上傳服裝照片以生成 3D 模型",
     "aiGenerating": "AI 正在生成 3D 服裝模型... (這可能需要幾分鐘)",
     "successGenerated": "成功！3D 服裝模型已生成。",
