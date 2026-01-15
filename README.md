@@ -9,21 +9,30 @@
 - **Windows (主要開發與生產環境)**: 利用 RTX 4090 (CUDA) 進行高速 AI 推論。
     - **SAM 3D Body**: 人體生成速度僅需 **3 秒**。
     - **SAM 3D Objects**: 衣服工廠核心，支援高品質材質烘焙。
-- **Mac (輔助與展示環境)**: 用於 UI/UX 調試及成果展示。
+    - **API 伺服器**: FastAPI 驅動的後端服務。
+    - **遠程開發支援**: 提供 SSH 服務，支援 Mac 遠程連接進行開發。
+    - **網絡配置**: 配置 DDNS 和 Port Forwarding，支援從外網訪問 Frontend 和 Backend。
+- **Mac (遠程開發終端)**: 外出工作時的遠程開發終端。
+    - **遠程編碼**: 通過 SSH 連接到 Windows 主機進行遠程開發。
+    - **UI/UX 開發**: 負責前端介面開發、移動端測試和優化。
+    - **遠程訪問**: 通過 DDNS 和 Port Forwarding 在外地訪問 Windows 主機上的服務。
 
 ---
 
 ## 🚀 快速開始 (Quick Start)
 
-### 1. 後端 (Backend - Mac/Windows)
-需安裝 Python 3.11+。
-#### Windows (Conda 推薦):
+### 環境配置說明
+**重要**: 項目統一使用 `sam3d-objects` Conda 環境，該環境已配置為可同時運行 `sam-3d-body` 和 `sam-3d-objects`。
+
+詳細的安裝步驟和環境配置請參閱 [SETUP_TROUBLESHOOTING.md](./SETUP_TROUBLESHOOTING.md)。
+
+### 1. 後端 (Backend - Windows)
 ```powershell
+# 激活統一環境
+conda activate sam3d-objects
+
+# 啟動後端服務
 cd backend
-conda create -n vfitting-body python=3.11
-conda activate vfitting-body
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
-pip install -r requirements.txt
 python main.py
 ```
 
@@ -33,24 +42,6 @@ python main.py
 cd frontend
 npm install
 npm run dev
-```
-
-### 3. 衣服工廠 (Clothing Factory - Windows CUDA 巔峰版)
-需具備 NVIDIA GPU 並安裝高品質渲染組件：
-```powershell
-cd clothing-factory/sam-3d-objects
-# 1. 建立環境
-conda create -n sam3d-objects python=3.11
-conda activate sam3d-objects
-
-# 2. 安裝特定版本 PyTorch (推薦 2.4.0 以兼容 Kaolin)
-pip install torch==2.4.0 torchvision==0.19.0 torchaudio==2.4.0 --index-url https://download.pytorch.org/whl/cu124
-
-# 3. 安裝核心依賴 (MoGe & Utils3D)
-pip install "MoGe @ git+https://github.com/microsoft/MoGe.git@a8c37341bc0325ca99b9d57981cc3bb2bd3e255b"
-
-# 4. 安裝高品質渲染器 (Nvdiffrast & Gaussian)
-# 詳細編譯步驟請參考 PROJECT_DEVELOPMENT_LOG.md 第 13 章
 ```
 
 ---
@@ -64,9 +55,13 @@ pip install "MoGe @ git+https://github.com/microsoft/MoGe.git@a8c37341bc0325ca99
 ---
 
 ## 🛠 核心功能
-- **高品質人體重建**: 從照片生成精確的 3D 人體拓撲。
+- **高品質人體重建**: 從照片生成精確的 3D 人體拓撲（僅需 3 秒）。
 - **服裝材質烘焙**: 產出具備真實 PBR 貼圖的 3D 衣服模型。
 - **3D 網頁預覽**: 支援 GLB/OBJ 格式的即時 3D 可視化。
+- **衣物選擇系統**: 支援預設和動態生成的衣物模型選擇。
+- **檔案驗證**: 前端和後端雙重檔案類型與大小驗證。
+- **多語言支援**: 支援英文、繁體中文、簡體中文三種語言。
+- **響應式設計**: 優化的手機版 UI，支援各種螢幕尺寸。
 
 ## 📝 開發日誌
 詳細的技術突破與 Bug 修復歷程請參閱 [PROJECT_DEVELOPMENT_LOG.md](./PROJECT_DEVELOPMENT_LOG.md)。

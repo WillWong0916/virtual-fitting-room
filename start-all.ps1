@@ -1,4 +1,5 @@
 # 虛擬試衣間 一鍵啟動腳本 (Windows PowerShell)
+# 使用統一的 sam3d-objects 環境（可同時運行 sam-3d-body 和 sam-3d-objects）
 
 Write-Host "🚀 Starting Virtual Fitting Room..." -ForegroundColor Cyan
 
@@ -8,8 +9,8 @@ $condaPath = "C:\Users\willw\anaconda3\Scripts\conda.exe"
 $nodePath = "C:\Program Files\nodejs"
 # 確保 node 在 PATH 中，因為 vite 需要它
 $env:Path = "$nodePath;$env:Path"
-# 使用 conda run 執行，這樣不需要先 activate
-Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; `$env:Path = '$nodePath;' + `$env:Path; & '$condaPath' run -n vfitting-body python main.py"
+# 使用統一的 sam3d-objects 環境
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd backend; `$env:Path = '$nodePath;' + `$env:Path; & '$condaPath' run -n sam3d-objects python main.py"
 
 # 2. 啟動前端
 Write-Host "🌐 Starting Frontend (Vite)..." -ForegroundColor Green

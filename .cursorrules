@@ -3,7 +3,11 @@
 ## Project Architecture
 - **Hybrid Architecture**: "Front Store, Back Factory" (前店後廠).
 - **Primary Environment (Windows)**: RTX 4090 / CUDA. Core environment for AI generation (3D Body & Objects). 100x faster than Mac MPS.
-- **Auxiliary Environment (Mac)**: M4 / MPS. Used for mobile development, UI/UX demo, and remote coding.
+  - Provides SSH service for remote development.
+  - Configured with DDNS and Port Forwarding for external access to Frontend and Backend services.
+- **Auxiliary Environment (Mac)**: M4 / MPS. Used as remote development terminal when working away from office.
+  - Connects to Windows host via SSH for remote coding.
+  - Used for mobile development, UI/UX testing, and remote access via DDNS.
 - **Backend**: FastAPI (Python 3.11).
 - **Frontend**: React + Three.js.
 
@@ -23,8 +27,9 @@
 ## Cross-Platform Compatibility
 - Always use `pathlib.Path` or `os.path.join` for file paths to support both `\` (Windows) and `/` (Mac).
 - Python 3.11 is the standard across all platforms.
+- **Unified Environment**: Use `sam3d-objects` Conda environment for both `sam-3d-body` and `sam-3d-objects` on Windows.
 - For Windows, assume environments managed by **Conda**.
-- For Mac, assume environments managed by **venv**.
+- For Mac, assume environments managed by **venv** (for remote development).
 
 ## Windows Development (Clothing Factory)
 - When working in `clothing-factory/`, assume **PowerShell** or **WSL2**.
