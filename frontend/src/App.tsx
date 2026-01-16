@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink } from 'react-router-dom';
 import { FittingRoom } from './pages/FittingRoom';
 import { ClothingFactory } from './pages/ClothingFactory';
+import { RotateCloth } from './pages/RotateCloth';
 import { Preloader } from './components/Preloader';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { I18nProvider, useTranslation } from './contexts/I18nContext';
@@ -86,6 +87,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<FittingRoom />} />
             <Route path="/admin" element={<ClothingFactory />} />
+            <Route path="/admin/rotate" element={<RotateCloth />} />
           </Routes>
         </Router>
       </div>

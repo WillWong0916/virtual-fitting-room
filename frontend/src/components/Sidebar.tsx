@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from '../contexts/I18nContext';
 import { CONFIG } from '../config';
 
@@ -33,6 +33,37 @@ export function Sidebar({
 }: SidebarProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>('bodies');
+  const panelRef = useRef<HTMLElement>(null);
+
+  // 確保滾動事件能正確處理
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // 檢查是否可以滾動
+      const canScroll = panel.scrollHeight > panel.clientHeight;
+      if (!canScroll) return;
+
+      // 檢查是否在邊界
+      const isAtTop = panel.scrollTop <= 0;
+      const isAtBottom = panel.scrollTop + panel.clientHeight >= panel.scrollHeight - 1;
+      
+      // 如果不在邊界，或者滾動方向允許繼續，則執行滾動
+      if (!((isAtTop && e.deltaY < 0) || (isAtBottom && e.deltaY > 0))) {
+        panel.scrollTop += e.deltaY;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    // 使用 capture 階段確保事件被正確處理
+    panel.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+    
+    return () => {
+      panel.removeEventListener('wheel', handleWheel, { capture: true } as any);
+    };
+  }, []);
 
   // 優先顯示預設模型，然後是動態生成的
   const sortedBodies = [...bodies].sort((a, b) => {
@@ -48,7 +79,7 @@ export function Sidebar({
   });
 
   return (
-    <aside className="presets-panel">
+    <aside className="presets-panel" ref={panelRef}>
       <div className="sidebar-tabs">
         <button
           className={`sidebar-tab ${activeTab === 'bodies' ? 'active' : ''}`}

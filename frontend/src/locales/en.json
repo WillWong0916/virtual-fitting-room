@@ -7,8 +7,7 @@
     "failed": "Failed",
     "error": "Error",
     "upload": "Upload",
-    "download": "Download",
-    "downloadDisabled": "Download Disabled",
+    "edit": "Edit",
     "clickToView3D": "Click to view 3D",
     "noPreview": "No Preview",
     "loading": "Loading",
@@ -41,11 +40,21 @@
     "title": "Clothing Factory (Admin)",
     "uploadToGenerate": "Upload a clothing photo to generate 3D model",
     "aiGenerating": "AI is generating 3D clothing model... (this may take a few minutes)",
-    "successGenerated": "Success! 3D clothing model generated.",
+    "successGenerated": "Success! Redirecting to orientation adjustment...",
     "failedWithMessage": "Failed: {message}",
     "unknownError": "Unknown error",
     "uploadClothingPhoto": "Upload Clothing Photo",
     "generatedClothes": "Generated 3D Clothes",
     "noClothesYet": "No clothes generated yet."
+  },
+  "rotateCloth": {
+    "title": "Adjust Clothing Orientation",
+    "subtitle": "Use the buttons below to rotate the model to the correct orientation",
+    "axis": "Axis",
+    "reset": "Reset",
+    "saveAndFinish": "Save & Finish",
+    "saveSuccess": "Saved successfully! Returning to clothing library...",
+    "saveFailed": "Save failed, please try again",
+    "hint": "Tip: Y-axis controls left/right rotation, X-axis controls up/down flip, Z-axis controls tilt"
   }
 }

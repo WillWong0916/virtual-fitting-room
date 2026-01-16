@@ -328,6 +328,36 @@
   display: none;
 }
 
+/* --- ROTATE BUTTONS --- */
+.rotate-btn {
+  background: var(--c-bg);
+  color: var(--c-text);
+  border: 1px solid rgba(18, 18, 18, 0.2);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 70px;
+}
+
+.rotate-btn:hover:not(:disabled) {
+  background: var(--c-dark);
+  color: var(--c-bg);
+  border-color: var(--c-dark);
+  transform: translateY(-1px);
+}
+
+.rotate-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.rotate-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .status-text {
   margin: 0;
   font-size: clamp(0.65rem, 2vw, 0.875rem);
@@ -344,22 +374,54 @@
 .main-content {
   flex: 1;
   display: flex;
+  flex-direction: row; /* 桌面端：水平佈局，Sidebar 在左側 */
   overflow: hidden;
   height: calc(100vh - 140px);
   min-height: 0; /* Important for flex children */
 }
 
-/* --- PRESETS PANEL (Updated Style) --- */
+/* --- PRESETS PANEL (桌面端左側垂直，手機端底部橫向) --- */
 .presets-panel {
-  width: 280px;
-  background-color: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(10px);
+  width: 320px; /* 桌面端固定寬度 */
+  height: 100%; /* 桌面端佔滿高度 */
+  max-height: 100%; /* 確保不超過父容器 */
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
   border-right: 1px solid rgba(18, 18, 18, 0.1);
+  border-top: none; /* 桌面端不需要頂部邊框 */
   padding: 2rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
   z-index: 5;
+  order: 1; /* 桌面端在左側 */
+  overflow-y: auto; /* 桌面端垂直滾動 */
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  min-height: 0; /* 允許 flex 收縮 */
+  position: relative; /* 確保滾動容器定位正確 */
+  will-change: scroll-position; /* 優化滾動性能 */
+  /* 確保滾動事件能正確處理 */
+  overscroll-behavior: contain;
+}
+
+/* 桌面端垂直滾動條樣式 */
+.presets-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.presets-panel::-webkit-scrollbar-track {
+  background: rgba(18, 18, 18, 0.05);
+}
+
+.presets-panel::-webkit-scrollbar-thumb {
+  background: rgba(18, 18, 18, 0.2);
+  border-radius: 3px;
+}
+
+.presets-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(18, 18, 18, 0.3);
 }
 
 .sidebar-tabs {
@@ -368,10 +430,11 @@
   border-bottom: 1px solid rgba(18, 18, 18, 0.1);
   padding-bottom: 0.75rem;
   margin-bottom: 0.5rem;
+  flex-shrink: 0; /* 防止 tabs 被壓縮 */
 }
 
 .sidebar-tab {
-  flex: 1;
+  flex: 1; /* 桌面端平分寬度 */
   background: transparent;
   border: none;
   padding: 0.5rem 1rem;
@@ -418,18 +481,25 @@
   letter-spacing: 0.2em;
   font-weight: 600;
   font-family: var(--font-body);
+  flex-shrink: 0; /* 防止標題被壓縮 */
 }
 
 .presets-list {
   display: flex;
-  flex-direction: column;
+  flex-direction: column; /* 桌面端：垂直排列 */
   gap: 1.25rem;
-  overflow-y: auto;
+  overflow: visible; /* 移除滾動，讓外層容器處理 */
+  padding: 0;
+  flex: 1 1 auto; /* 讓列表可以擴展並佔據剩餘空間 */
+  min-height: 0; /* 允許 flex 收縮，這對滾動很重要 */
+  /* 確保滾動事件能傳播到父容器 */
+  pointer-events: auto;
 }
 
 .preset-item {
+  width: 100%; /* 桌面端：寬度 100% */
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border-radius: 0;
   padding: 0;
   background: transparent;
@@ -438,33 +508,37 @@
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
-  overflow: hidden;
+  box-shadow: none;
 }
 
 .preset-item:hover {
   border-color: var(--c-dark);
   transform: translateY(-2px);
+  box-shadow: none;
 }
 
 .preset-item.active {
   border-color: var(--c-dark);
   background: rgba(18, 18, 18, 0.05);
+  box-shadow: none;
 }
 
 .thumbnail-wrapper {
   width: 100%;
-  aspect-ratio: 3/4;
+  aspect-ratio: 3/4; /* 桌面端：3:4 比例更適合垂直列表 */
   overflow: hidden;
   background: #f5f5f5;
   display: flex;
   align-items: center;
   justify-content: center;
+  border-radius: 0;
 }
 
 .thumbnail-wrapper img {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  padding: 0;
 }
 
 .preset-item span {
@@ -475,6 +549,10 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   padding: 0 0.5rem 0.75rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 /* --- SCENE CONTAINER --- */
@@ -482,10 +560,11 @@
   flex: 1;
   width: 100%;
   height: 100%;
-  min-height: 0; /* Important for flex children */
+  min-height: 0;
   position: relative;
   background-color: var(--c-bg);
   overflow: hidden;
+  order: 2; /* 桌面端在右側 */
 }
 
 .canvas-container {
@@ -641,6 +720,7 @@ canvas {
   
   .main-content {
     height: calc(100vh - 100px);
+    flex-direction: column; /* 手機端：垂直佈局，Sidebar 在下方 */
   }
   
   .mode-switcher-nav {
@@ -659,26 +739,84 @@ canvas {
     font-size: 0.7rem;
   }
   
+  /* 手機端：底部橫向滾動 */
   .presets-panel {
-    width: 180px;
-    padding: 1rem;
-    overflow-x: hidden;
+    width: 100%;
+    height: auto;
+    min-height: 250px;
+    border-right: none;
+    border-top: 1px solid rgba(18, 18, 18, 0.1);
+    padding: 1rem 1rem;
+    order: 2; /* 手機端在下方 */
+    overflow-y: visible;
   }
   
   .sidebar-tabs {
-    gap: 0.25rem;
+    gap: 1.5rem;
+    border-bottom: 1px solid rgba(18, 18, 18, 0.05);
     padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
-    min-width: 0;
-    overflow: hidden;
+    margin-bottom: 0;
   }
   
   .sidebar-tab {
-    flex: 1;
-    min-width: 0;
-    padding: 0.4rem 0.5rem;
-    font-size: 0.65rem;
-    letter-spacing: 0.05em;
+    flex: none;
+    width: auto;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+  
+  .sidebar-tab::after {
+    bottom: -0.5rem;
+  }
+  
+  .presets-list {
+    flex-direction: row; /* 手機端：橫向滾動 */
+    gap: 1rem;
+    overflow-x: auto;
+    overflow-y: visible;
+    padding: 0.5rem 0.5rem 1.5rem;
+  }
+
+  .preset-item {
+    flex: 0 0 140px; /* 手機端固定寬度 */
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  }
+  
+  .preset-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+  }
+  
+  .preset-item.active {
+    border-width: 2px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .thumbnail-wrapper {
+    aspect-ratio: 1/1; /* 手機端：方形 */
+    border-radius: 12px 12px 0 0;
+  }
+  
+  .preset-item span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.5rem 0.5rem 0.75rem;
+  }
+  
+  .scene-container {
+    order: 1; /* 手機端在上方 */
+  }
+
+  .sidebar-tabs {
+    gap: 1rem;
+  }
+  
+  .sidebar-tab {
+    padding: 0.25rem 0.4rem;
+    font-size: 0.7rem;
   }
   
   .sidebar-tab::after {
@@ -737,16 +875,20 @@ canvas {
   }
   
   .presets-panel {
-    width: 160px;
-    padding: 0.75rem;
+    padding: 0.75rem 0.75rem;
+    min-height: 220px;
   }
   
-  .sidebar-tabs {
-    gap: 0.2rem;
+  .presets-list {
+    gap: 0.75rem;
+  }
+
+  .preset-item {
+    flex: 0 0 120px; /* 小螢幕固定寬度 */
   }
   
   .sidebar-tab {
-    padding: 0.35rem 0.4rem;
-    font-size: 0.6rem;
+    padding: 0.2rem 0.3rem;
+    font-size: 0.65rem;
   }
 }

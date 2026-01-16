@@ -7,8 +7,7 @@
     "failed": "失敗",
     "error": "錯誤",
     "upload": "上傳",
-    "download": "下載",
-    "downloadDisabled": "下載已停用",
+    "edit": "編輯",
     "clickToView3D": "點擊查看 3D 模型",
     "noPreview": "無預覽",
     "loading": "載入中",
@@ -41,11 +40,21 @@
     "title": "服裝製作 (管理員)",
     "uploadToGenerate": "上傳服裝照片以生成 3D 模型",
     "aiGenerating": "AI 正在生成 3D 服裝模型... (這可能需要幾分鐘)",
-    "successGenerated": "成功！3D 服裝模型已生成。",
+    "successGenerated": "成功！正在跳轉到方向調整頁面...",
     "failedWithMessage": "失敗: {message}",
     "unknownError": "未知錯誤",
     "uploadClothingPhoto": "上傳服裝照片",
     "generatedClothes": "已生成的 3D 服裝",
     "noClothesYet": "尚未生成任何服裝模型。"
+  },
+  "rotateCloth": {
+    "title": "調整衣物方向",
+    "subtitle": "使用下方按鈕旋轉模型至正確方向",
+    "axis": "軸",
+    "reset": "重置",
+    "saveAndFinish": "保存並完成",
+    "saveSuccess": "保存成功！正在返回衣物庫...",
+    "saveFailed": "保存失敗，請重試",
+    "hint": "提示：Y 軸控制左右旋轉，X 軸控制上下翻轉，Z 軸控制傾斜"
   }
 }

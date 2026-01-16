@@ -1,6 +1,6 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Form
 from fastapi.responses import StreamingResponse
-import shutil
+from pydantic import BaseModel
 import logging
 import json
 import threading
@@ -8,6 +8,8 @@ import queue
 from pathlib import Path
 from clothes_service import clothes_service
 import cv2
+import trimesh
+import numpy as np
 
 logger = logging.getLogger("ClothesRouter")
 
@@ -21,9 +23,21 @@ ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
 MAX_FILE_SIZE_MB = 10
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
+# 旋轉請求模型
+class RotateRequest(BaseModel):
+    filename: str
+    rotation_x: int = 0  # 以 90° 為單位
+    rotation_y: int = 0
+    rotation_z: int = 0
+
 @router.post("/upload/cloth")
-async def upload_cloth(file: UploadFile = File(...)):
-    """上傳衣物照片並生成 3D 模型"""
+async def upload_cloth(
+    file: UploadFile = File(...)
+):
+    """
+    上傳衣物照片並生成 3D 模型
+    生成後需跳轉到旋轉調整頁面讓用戶手動調整方向
+    """
     logger.info(f"Received clothing upload request: {file.filename}")
     
     # 驗證檔案類型
@@ -49,8 +63,8 @@ async def upload_cloth(file: UploadFile = File(...)):
         with open(file_path, "wb") as buffer:
             buffer.write(file_content)
         
-        # 2. 呼叫 AI 服務進行處理
-        logger.info("Calling clothes_service.process_image...")
+        # 2. 呼叫 AI 服務進行處理（生成後用戶將手動調整旋轉）
+        logger.info(f"Calling clothes_service.process_image...")
         result_path = clothes_service.process_image(str(file_path))
         
         if not result_path:
@@ -84,8 +98,13 @@ async def upload_cloth(file: UploadFile = File(...)):
         return {"status": "error", "message": str(e)}
 
 @router.post("/upload/cloth/stream")
-async def upload_cloth_stream(file: UploadFile = File(...)):
-    """上傳衣物照片並生成 3D 模型，使用 SSE 推送進度更新"""
+async def upload_cloth_stream(
+    file: UploadFile = File(...)
+):
+    """
+    上傳衣物照片並生成 3D 模型，使用 SSE 推送進度更新
+    生成後需跳轉到旋轉調整頁面讓用戶手動調整方向
+    """
     logger.info(f"Received clothing upload request (with progress): {file.filename}")
     
     # 驗證檔案類型
@@ -133,7 +152,7 @@ async def upload_cloth_stream(file: UploadFile = File(...)):
                 except:
                     pass
             
-            # 3. 在後台線程執行處理
+            # 3. 在後台線程執行處理（生成後用戶將手動調整旋轉）
             def process_in_background():
                 try:
                     result_path = clothes_service.process_image(str(file_path), progress_callback=progress_callback)
@@ -235,3 +254,85 @@ async def list_clothes():
     except Exception as e:
         logger.error(f"Error in list_clothes: {e}")
         return {"status": "error", "message": str(e)}
+
+@router.post("/rotate")
+async def rotate_model(request: RotateRequest):
+    """
+    旋轉已生成的 3D 模型並保存
+    
+    Args:
+        filename: GLB 檔案名稱
+        rotation_x: X 軸旋轉次數（每次 90°）
+        rotation_y: Y 軸旋轉次數（每次 90°）
+        rotation_z: Z 軸旋轉次數（每次 90°）
+    """
+    logger.info(f"Rotate request: {request.filename}, X={request.rotation_x}, Y={request.rotation_y}, Z={request.rotation_z}")
+    
+    try:
+        # 構建檔案路徑
+        model_path = clothes_service.output_dir / request.filename
+        
+        if not model_path.exists():
+            raise HTTPException(status_code=404, detail=f"Model file not found: {request.filename}")
+        
+        # 載入模型
+        mesh = trimesh.load(str(model_path))
+        
+        # 如果是 Scene，轉換為單一 mesh
+        if isinstance(mesh, trimesh.Scene):
+            meshes = [g for g in mesh.geometry.values() if isinstance(g, trimesh.Trimesh)]
+            if meshes:
+                mesh = trimesh.util.concatenate(meshes)
+            else:
+                raise HTTPException(status_code=400, detail="No valid mesh found in the model")
+        
+        # 應用旋轉（每次 90°）
+        if request.rotation_x != 0:
+            angle = request.rotation_x * (np.pi / 2)
+            rotation = trimesh.transformations.rotation_matrix(angle, [1, 0, 0])
+            mesh.apply_transform(rotation)
+            logger.info(f"Applied X rotation: {request.rotation_x * 90}°")
+        
+        if request.rotation_y != 0:
+            angle = request.rotation_y * (np.pi / 2)
+            rotation = trimesh.transformations.rotation_matrix(angle, [0, 1, 0])
+            mesh.apply_transform(rotation)
+            logger.info(f"Applied Y rotation: {request.rotation_y * 90}°")
+        
+        if request.rotation_z != 0:
+            angle = request.rotation_z * (np.pi / 2)
+            rotation = trimesh.transformations.rotation_matrix(angle, [0, 0, 1])
+            mesh.apply_transform(rotation)
+            logger.info(f"Applied Z rotation: {request.rotation_z * 90}°")
+        
+        # --- 自動接地與置中優化 ---
+        # 1. 取得當前模型的 Bounding Box 和中心點
+        bounds = mesh.bounds  # [[min_x, min_y, min_z], [max_x, max_y, max_z]]
+        centroid = mesh.centroid
+        
+        # 2. 計算偏移量
+        # X, Z 軸：將幾何中心移到 0
+        # Y 軸：將最低點 (bounds[0, 1]) 移到 0 (接地)
+        translation = [
+            -centroid[0],      # X 置中
+            -bounds[0, 1],     # Y 接地 (底部對齊 0)
+            -centroid[2]       # Z 置中
+        ]
+        
+        mesh.apply_translation(translation)
+        logger.info(f"Applied auto-grounding and centering. Translation: {translation}")
+        
+        # 保存回原檔案
+        mesh.export(str(model_path))
+        logger.info(f"Model saved to {model_path}")
+        
+        return {
+            "status": "success",
+            "message": "Model rotated and saved successfully",
+            "model_url": f"/outputs/clothes/{request.filename}"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error in rotate_model: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))

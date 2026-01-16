@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useGLTF } from '@react-three/drei';
 import { CONFIG } from '../config';
 import { ClothViewer } from '../components/ClothViewer';
 import { Toast } from '../components/Toast';
@@ -21,9 +23,11 @@ export function ClothingFactory() {
   const [progress, setProgress] = useState(0);
   const [uploadThumbnail, setUploadThumbnail] = useState<string | null>(null);
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [status, setStatus] = useState<string>(t('clothingFactory.uploadToGenerate'));
   const [clothes, setClothes] = useState<ClothModel[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewCacheKey, setPreviewCacheKey] = useState<number>(Date.now());
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const headerRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -74,6 +78,10 @@ export function ClothingFactory() {
 
   useEffect(() => {
     fetchClothes();
+    // 進入頁面時清空 GLTF 快取，確保看到的是最新修改
+    return () => {
+      useGLTF.clear(); 
+    };
   }, []);
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -150,16 +158,13 @@ export function ClothingFactory() {
                 setUploadThumbnail(`${CONFIG.API_BASE_URL}${data.thumbnail_url}`);
               }
               
-              // 處理完成
-              if (data.stage === 'complete') {
+              // 處理完成 - 跳轉到旋轉調整頁面
+              if (data.stage === 'complete' && data.model_url) {
                 setStatus(t('clothingFactory.successGenerated'));
                 setProgress(100);
                 
-                // 延遲一點再刷新列表，確保文件已寫入
-                setTimeout(() => {
-                  fetchClothes();
-                  setUploadThumbnail(null);
-                }, 500);
+                // 從 model_url 提取檔案名
+                const filename = data.model_url.split('/').pop();
                 
                 // Animate success
                 gsap.to(headerRef.current, {
@@ -169,6 +174,14 @@ export function ClothingFactory() {
                   repeat: 1,
                   ease: 'power2.inOut'
                 });
+                
+                // 延遲一點再跳轉到旋轉調整頁面
+                setTimeout(() => {
+                  setUploadThumbnail(null);
+                  setLoading(false);
+                  navigate(`/admin/rotate?model=${encodeURIComponent(data.model_url)}&filename=${encodeURIComponent(filename)}`);
+                }, 1000);
+                return; // 提前返回，不要執行 finally 中的 setLoading(false)
               }
               
               // 處理錯誤
@@ -303,10 +316,13 @@ export function ClothingFactory() {
             <div key={index} className="cloth-card">
               <div className="cloth-thumbnail">
                 {previewUrl === `${CONFIG.API_BASE_URL}${cloth.url}` ? (
-                  <ClothViewer modelUrl={previewUrl} />
+                  <ClothViewer modelUrl={previewUrl} cacheKey={previewCacheKey} />
                 ) : (
                   <div 
-                    onClick={() => setPreviewUrl(`${CONFIG.API_BASE_URL}${cloth.url}`)}
+                    onClick={() => {
+                      setPreviewCacheKey(Date.now());
+                      setPreviewUrl(`${CONFIG.API_BASE_URL}${cloth.url}`);
+                    }}
                     style={{ cursor: 'pointer', position: 'relative', width: '100%', height: '100%' }}
                   >
                     {cloth.thumbnail ? (
@@ -341,9 +357,22 @@ export function ClothingFactory() {
               </div>
               <p className="cloth-name">{cloth.name} ({cloth.format})</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
-                <span className="cloth-link" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
-                  {t('common.downloadDisabled')}
-                </span>
+                <button 
+                  className="cloth-link"
+                  onClick={() => {
+                    const filename = cloth.url.split('/').pop();
+                    navigate(`/admin/rotate?model=${encodeURIComponent(cloth.url)}&filename=${encodeURIComponent(filename || '')}`);
+                  }}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    padding: 0,
+                    font: 'inherit'
+                  }}
+                >
+                  {t('common.edit')}
+                </button>
               </div>
             </div>
           ))}

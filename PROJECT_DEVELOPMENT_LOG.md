@@ -315,6 +315,124 @@ virtual-fitting-room/          (總專案資料夾)
     *   試衣功能未實裝提示
     *   未來可擴展用於其他通知場景
 
+### 第 17.5 章：3D 模型手動旋轉調整功能實現 (2026-01-15)
+
+#### 1. 功能需求與設計決策
+*   **問題背景**:
+    *   原本嘗試使用自動方向修正（基於 bounding box 尺寸判斷「窄」或「闊」服裝類型）
+    *   發現自動判斷不可靠，不同服裝類型的初始 bounding box 尺寸差異很大
+    *   無法找到一個通用的規則來準確判斷正確的旋轉策略
+*   **設計決策**:
+    *   從自動判斷改為**用戶手動調整**的方式
+    *   在 GLB 文件生成後，自動跳轉到專用的旋轉調整頁面
+    *   用戶可以以 90° 為單位調整 X、Y、Z 軸旋轉
+    *   保存後返回衣物庫頁面，移除服裝類型選擇功能
+
+#### 2. 後端實現
+*   **移除自動方向修正**:
+    *   刪除 `fix_mesh_orientation`、`fix_mesh_orientation_slim`、`fix_mesh_orientation_wide` 函數（約 150 行代碼）
+    *   移除 `process_image` 方法中的 `garment_type` 和 `auto_fix_orientation` 參數
+    *   簡化為只執行初始的接地與置中操作
+*   **旋轉 API 端點**:
+    *   創建 `RotateRequest` Pydantic 模型，接收 `filename` 和 `rotation_x/y/z`（以 90° 為單位）
+    *   實現 `POST /clothes/rotate` 端點：
+        *   載入 GLB 文件（使用 `trimesh`）
+        *   應用旋轉矩陣（基於 `rotation_x/y/z * π/2`）
+        *   自動執行接地與置中優化（確保模型底部對齊 Y=0，X/Z 置中）
+        *   保存回原文件
+*   **移除服裝類型選擇**:
+    *   刪除 `GARMENT_TYPES` 常量和 `/clothes/garment-types` GET 端點
+    *   簡化上傳流程，不再需要用戶選擇服裝類型
+
+#### 3. 前端實現
+*   **旋轉調整頁面** (`RotateCloth.tsx`):
+    *   從 URL 參數獲取 `model_url` 和 `filename`
+    *   使用 `@react-three/fiber` 和 `@react-three/drei` 顯示 3D 預覽
+    *   實現 X、Y、Z 軸的 +/- 90° 旋轉按鈕
+    *   即時更新 3D 模型顯示（使用 `useEffect` 監聽旋轉狀態變化）
+    *   Reset 按鈕重置所有旋轉為 0
+    *   Save & Finish 按鈕調用後端 API 保存旋轉並跳轉回 `/admin`
+*   **路由配置**:
+    *   在 `App.tsx` 中添加 `/admin/rotate` 路由
+*   **上傳流程更新** (`ClothingFactory.tsx`):
+    *   移除 `garmentType` 狀態和下拉選單 UI
+    *   上傳成功後，自動導航到 `/admin/rotate?model_url=...&filename=...`
+    *   添加 "Edit" 按鈕，允許用戶重新調整已生成的模型旋轉
+
+#### 4. 遇到的問題與解決方案
+
+##### 問題 1: 3D 模型緩存導致旋轉不更新
+*   **問題描述**:
+    *   用戶在旋轉頁面調整並保存後，返回衣物庫頁面查看時，3D 模型的面向和旋轉都沒有變化
+    *   即使後端已經成功保存了修改後的 GLB 文件，前端仍然顯示舊的模型
+*   **根本原因**:
+    *   `useGLTF` hook 會緩存已載入的 GLB 模型
+    *   即使文件內容已更新，React Three Fiber 仍使用緩存中的舊模型
+    *   URL 查詢參數（如 `?t=timestamp`）對 `useGLTF` 的文件類型檢測可能造成問題
+*   **解決方案**:
+    *   **方案 1 - Cache Key 機制**:
+        *   在 `ClothingFactory.tsx` 中添加 `previewCacheKey` 狀態
+        *   當點擊模型預覽或從旋轉頁面返回時，更新 `cacheKey`（使用 `Date.now()`）
+        *   將 `cacheKey` 作為 prop 傳遞給 `ClothViewer` 組件
+    *   **方案 2 - 強制清除緩存**:
+        *   在 `ClothViewer.tsx` 的 `Model` 組件中，使用 `useEffect` 監聽 `cacheKey` 或 `url` 變化
+        *   當變化時，調用 `useGLTF.clear(url)` 清除該 URL 的緩存
+        *   使用 `key={cacheKey}` 強制 `Model` 組件重新掛載
+    *   **方案 3 - 組件卸載時清理**:
+        *   在 `ClothingFactory.tsx` 的 `useEffect` cleanup 函數中，調用 `useGLTF.clear()` 清除整個緩存
+        *   確保頁面切換時不會殘留舊緩存
+*   **最終實現**:
+    *   組合使用以上三種方案，確保緩存正確更新：
+        *   傳遞 `cacheKey` 到 `ClothViewer`
+        *   在 `Model` 組件中監聽 `cacheKey` 變化並清除緩存
+        *   使用 `key={cacheKey}` 強制重新掛載
+        *   頁面卸載時清除整個緩存
+
+##### 問題 2: URL 查詢參數影響文件類型檢測
+*   **問題描述**:
+    *   使用 `url?t=timestamp` 進行緩存破壞時，`useGLTF` 可能無法正確識別文件類型
+    *   導致模型載入失敗或顯示黑屏
+*   **解決方案**:
+    *   將原始 URL（不含查詢參數）傳遞給 `useGLTF`
+    *   緩存破壞通過 `cacheKey` 和 `key` prop 實現，而非 URL 查詢參數
+    *   確保 `useGLTF` 能正確識別 `.glb` 文件類型
+
+#### 5. 修改的文件
+*   **後端**:
+    *   `backend/clothes_service.py`:
+        *   移除 `fix_mesh_orientation`、`fix_mesh_orientation_slim`、`fix_mesh_orientation_wide` 函數
+        *   簡化 `process_image` 方法簽名（移除 `garment_type` 和 `auto_fix_orientation` 參數）
+        *   保留初始的接地與置中邏輯
+    *   `backend/routers/clothes.py`:
+        *   移除 `GARMENT_TYPES` 常量和 `garment_type` Form 參數
+        *   添加 `RotateRequest` Pydantic 模型
+        *   實現 `POST /clothes/rotate` 端點
+        *   移除 `/clothes/garment-types` GET 端點
+*   **前端**:
+    *   `frontend/src/pages/RotateCloth.tsx` (新文件):
+        *   創建專用的旋轉調整頁面組件
+        *   實現 3D 預覽和旋轉控制 UI
+        *   處理保存和導航邏輯
+    *   `frontend/src/pages/ClothingFactory.tsx`:
+        *   移除 `garmentType` 狀態和相關 UI
+        *   上傳成功後導航到旋轉頁面
+        *   添加 `previewCacheKey` 狀態管理
+        *   添加 "Edit" 按鈕
+        *   實現緩存清理邏輯
+    *   `frontend/src/components/ClothViewer.tsx`:
+        *   添加 `cacheKey` prop
+        *   實現緩存清除和強制重新掛載邏輯
+    *   `frontend/src/App.tsx`:
+        *   添加 `/admin/rotate` 路由
+    *   `frontend/src/locales/*.json`:
+        *   添加旋轉頁面相關翻譯（`rotateCloth.title`、`rotateCloth.axis`、`rotateCloth.saveAndFinish` 等）
+        *   移除未使用的 `download` 和 `downloadDisabled` 翻譯
+
+#### 6. 技術總結
+*   **設計理念**: 從不可靠的自動判斷改為用戶可控的手動調整，提升準確性和用戶體驗
+*   **緩存管理**: 深入理解 React Three Fiber 的 `useGLTF` 緩存機制，實現多層次的緩存清理策略
+*   **用戶流程**: 上傳 → 生成 → 調整 → 保存 → 查看，流程清晰且直觀
+
 ### 第 18 章：編譯優化嘗試與回退 (2026-01-15)
 
 #### 1. 編譯優化嘗試
@@ -381,6 +499,112 @@ virtual-fitting-room/          (總專案資料夾)
     *   `backend/TRITON_TEST_GUIDE.md` - triton 測試指南
     *   `backend/diagnose_compile.py` - 編譯診斷腳本
     *   `backend/check_compile_status.py` - 編譯狀態檢查腳本（詳細版）
+
+### 第 19 章：試衣間 UI/UX 響應式優化與滾動修復 (2026-01-16)
+
+#### 1. 桌面版左側垂直列表佈局
+*   **佈局重構**:
+    *   將桌面版（> 768px）的 Sidebar 從底部橫向滾動改為左側垂直列表
+    *   `main-content` 使用 `flex-direction: row`，Sidebar 固定在左側（`width: 320px`）
+    *   Scene 容器佔據右側剩餘空間（`flex: 1`），實現左右分欄佈局
+    *   使用 `order` 屬性控制元素順序（Sidebar `order: 1`，Scene `order: 2`）
+    *   優化視覺層次，提升桌面端使用體驗
+*   **樣式優化**:
+    *   Sidebar 使用 `overflow-y: auto` 實現垂直滾動，`overflow-x: hidden` 防止橫向滾動
+    *   縮圖比例改為 `3:4`（`aspect-ratio: 3/4`），更適合垂直列表顯示
+    *   調整卡片樣式：
+        *   移除圓角（`border-radius: 0`）和陰影（`box-shadow: none`）
+        *   採用更簡潔的邊框設計（`border: 1px solid rgba(18, 18, 18, 0.1)`）
+        *   背景改為透明（`background: transparent`）
+    *   優化間距和字體大小：
+        *   Sidebar padding: `2rem`
+        *   卡片間距: `gap: 1.25rem`
+        *   標題字體: `0.875rem`，文字字體: `0.75rem`
+*   **滾動條美化**:
+    *   自定義滾動條樣式（寬度 6px，半透明設計）
+    *   滾動條軌道: `rgba(18, 18, 18, 0.05)`
+    *   滾動條滑塊: `rgba(18, 18, 18, 0.2)`，hover 時變為 `rgba(18, 18, 18, 0.3)`
+    *   添加 hover 效果，提升交互體驗
+    *   使用 `scrollbar-width: thin`（Firefox）和 `-webkit-overflow-scrolling: touch`（iOS）優化滾動性能
+
+#### 2. 手機版保持底部橫向滾動
+*   **響應式設計**:
+    *   手機版（≤ 768px）保持底部橫向滾動（Roll 模式）
+    *   `main-content` 使用 `flex-direction: column`，Sidebar 在底部（`order: 2`）
+    *   Scene 容器在上方（`order: 1`）
+    *   使用 `@media (max-width: 768px)` 媒體查詢實現響應式切換
+    *   Sidebar 寬度改為 `100%`，高度 `auto`，`min-height: 250px`
+*   **樣式保持**:
+    *   手機版縮圖使用 `1:1` 方形比例（`aspect-ratio: 1/1`），適合橫向滾動
+    *   保持卡片圓角（`border-radius: 12px`）和陰影效果（`box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05)`），維持視覺一致性
+    *   卡片固定寬度：`flex: 0 0 140px`（768px 以下），`flex: 0 0 120px`（480px 以下）
+    *   優化間距和字體大小，確保小螢幕上的可讀性
+    *   Sidebar tabs 在手機版使用較小的間距和字體
+
+#### 3. 滑鼠滾輪滾動修復
+*   **問題診斷**:
+    *   發現桌面版滾動條出現但滑鼠滾輪無法滾動的問題
+    *   分析發現可能是子元素攔截滾動事件或 CSS 設置不當
+    *   檢查發現 `.presets-list` 和 `.presets-panel` 都設置了 `overflow-y: auto`，導致滾動事件衝突
+*   **根本原因**:
+    *   雙層滾動容器：`.presets-panel` 和 `.presets-list` 都設置了 `overflow-y: auto`
+    *   滾動事件被 `.presets-list` 攔截，但 `.presets-list` 的內容沒有超出其高度，所以無法滾動
+    *   Flex 子元素的高度計算問題：`.presets-list` 沒有明確的高度限制，導致瀏覽器無法判斷是否需要滾動
+*   **CSS 優化**:
+    *   將滾動設置從 `.presets-list` 移到 `.presets-panel`（外層容器）
+    *   `.presets-list` 設置 `overflow: visible`，讓它自然擴展，不再作為滾動容器
+    *   添加 `overscroll-behavior: contain` 防止滾動事件外洩到父容器
+    *   確保 flex 子元素正確設置：
+        *   `.presets-panel`: `min-height: 0`（允許 flex 收縮）
+        *   `.presets-list`: `flex: 1 1 auto`（佔據剩餘空間）和 `min-height: 0`（允許收縮）
+    *   添加 `position: relative` 和 `will-change: scroll-position` 優化滾動性能
+*   **JavaScript 滾動處理**:
+    *   在 `Sidebar.tsx` 組件中添加 `wheel` 事件監聽器作為備用方案
+    *   使用 `capture: true` 確保事件在捕獲階段處理，優先於子元素
+    *   實現邊界檢測（頂部/底部），防止過度滾動：
+        *   檢查 `scrollTop === 0`（頂部）和 `scrollTop + clientHeight >= scrollHeight - 1`（底部）
+        *   在邊界時允許事件繼續傳播，不在邊界時手動執行滾動
+    *   當內容可滾動且不在邊界時，手動執行 `panel.scrollTop += e.deltaY` 並阻止默認行為
+*   **解決方案組合**:
+    *   主要依靠 CSS 優化（正確的滾動容器設置）
+    *   JavaScript 事件處理作為備用方案，確保在所有情況下都能正常滾動
+    *   兩者結合確保了滾動功能的可靠性
+*   **最終效果**:
+    *   ✅ 桌面版左側列表可以正常使用滑鼠滾輪滾動
+    *   ✅ 手機版底部橫向滾動保持正常
+    *   ✅ 滾動條樣式美觀，交互流暢
+    *   ✅ 滾動性能優化，無卡頓現象
+
+#### 4. 修改的文件
+*   **`frontend/src/App.css`**:
+    *   重構 `.main-content` 和 `.presets-panel` 的佈局設置
+        *   `.main-content`: `flex-direction: row`（桌面端），`flex-direction: column`（手機端）
+        *   `.presets-panel`: 桌面端固定寬度 `320px`，手機端 `100%`
+    *   添加桌面端和手機端的響應式樣式（`@media (max-width: 768px)`）
+    *   優化滾動相關 CSS 屬性：
+        *   將 `overflow-y: auto` 從 `.presets-list` 移到 `.presets-panel`
+        *   添加 `overscroll-behavior: contain`
+        *   設置 flex 子元素的 `min-height: 0` 和 `flex` 屬性
+    *   添加自定義滾動條樣式（`.presets-panel::-webkit-scrollbar`）
+    *   調整縮圖比例、卡片樣式、間距等視覺元素
+*   **`frontend/src/components/Sidebar.tsx`**:
+    *   導入 `useRef` 和 `useEffect` hooks
+    *   添加 `panelRef` 引用指向 `presets-panel` DOM 元素
+    *   實現 `wheel` 事件處理邏輯：
+        *   檢查內容是否可滾動（`scrollHeight > clientHeight`）
+        *   實現邊界檢測（頂部/底部）
+        *   手動執行滾動並阻止默認行為（當不在邊界時）
+        *   使用 `capture: true` 和 `passive: false` 選項
+    *   確保滾動事件能正確傳播和處理
+
+#### 5. 技術總結
+*   **響應式設計原則**: 桌面端和手機端使用不同的佈局策略，充分利用各自的螢幕空間
+*   **滾動容器設計**: 避免雙層滾動容器，確保只有一個明確的滾動容器
+*   **Flex 佈局注意事項**: 
+    *   Flex 子元素需要設置 `min-height: 0` 才能正確收縮
+    *   滾動容器需要明確的高度限制（`height: 100%` 或 `max-height`）
+*   **事件處理策略**: CSS 優化為主，JavaScript 事件處理作為備用方案，確保功能的可靠性
+*   **用戶體驗優先**: 桌面端垂直列表更適合瀏覽大量項目，手機端橫向滾動更符合觸摸操作習慣
 
 ---
 

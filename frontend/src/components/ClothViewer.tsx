@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls, Stage, useGLTF, PerspectiveCamera } from '@react-three/drei';
 import { OBJLoader } from 'three-stdlib';
@@ -6,11 +6,20 @@ import { useLoader } from '@react-three/fiber';
 
 interface Props {
   modelUrl: string | null;
+  /** 用於強制重新加載模型的 key，例如時間戳 */
+  cacheKey?: string | number;
 }
 
-function Model({ url }: { url: string }) {
+function Model({ url, cacheKey }: { url: string; cacheKey?: string | number }) {
   const isObj = url.toLowerCase().endsWith('.obj');
   const isGltf = url.toLowerCase().endsWith('.gltf') || url.toLowerCase().endsWith('.glb');
+
+  // 當 cacheKey 改變時，手動清除快取
+  useEffect(() => {
+    if (isGltf) {
+      useGLTF.clear(url);
+    }
+  }, [url, cacheKey, isGltf]);
 
   // 根據後綴使用不同的加載器
   if (isObj) {
@@ -19,8 +28,10 @@ function Model({ url }: { url: string }) {
   }
   
   if (isGltf) {
+    // 這裡傳入原始 url，不帶查詢參數，避免加載器識別錯誤
     const { scene } = useGLTF(url);
-    // 這裡我們可以遍歷 scene，確保所有材質都支援頂點顏色
+    
+    // 遍歷 scene 設置材質
     scene.traverse((child: any) => {
       if (child.isMesh) {
         child.castShadow = true;
@@ -37,7 +48,7 @@ function Model({ url }: { url: string }) {
   return null;
 }
 
-export function ClothViewer({ modelUrl }: Props) {
+export function ClothViewer({ modelUrl, cacheKey }: Props) {
   if (!modelUrl) return <div className="no-model">No model to preview</div>;
 
   // 目前如果是 .ply，Three.js 原生支援較慢，我們暫時提示
@@ -55,7 +66,8 @@ export function ClothViewer({ modelUrl }: Props) {
       <Canvas shadows dpr={[1, 2]}>
         <Suspense fallback={null}>
           <Stage environment="city" intensity={0.5} contactShadow={true} shadowBias={-0.0015}>
-            <Model url={modelUrl} />
+            {/* 使用 key 強制重新掛載 Model 組件 */}
+            <Model key={cacheKey} url={modelUrl} cacheKey={cacheKey} />
           </Stage>
         </Suspense>
         <PerspectiveCamera makeDefault position={[0, 0, 5]} />

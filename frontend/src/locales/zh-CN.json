@@ -7,14 +7,13 @@
     "failed": "失败",
     "error": "错误",
     "upload": "上传",
-    "download": "下载",
-    "downloadDisabled": "下载已停用",
+    "edit": "编辑",
     "clickToView3D": "点击查看 3D 模型",
     "noPreview": "无预览",
     "loading": "加载中",
-    "invalidFileType": "不支持的檔案類型，請上傳圖片檔案 (JPG, PNG, WEBP)",
-    "fileTooLarge": "檔案大小超過限制，最大允許 {maxSize}MB",
-    "fileRequired": "請選擇要上傳的檔案"
+    "invalidFileType": "不支持的文件类型，请上传图片文件 (JPG, PNG, WEBP)",
+    "fileTooLarge": "文件大小超过限制，最大允许 {maxSize}MB",
+    "fileRequired": "请选择要上传的文件"
   },
   "nav": {
     "fittingRoom": "试衣间",
@@ -41,11 +40,21 @@
     "title": "服装制作 (管理员)",
     "uploadToGenerate": "上传服装照片以生成 3D 模型",
     "aiGenerating": "AI 正在生成 3D 服装模型... (这可能需要几分钟)",
-    "successGenerated": "成功！3D 服装模型已生成。",
+    "successGenerated": "成功！正在跳转到方向调整页面...",
     "failedWithMessage": "失败: {message}",
     "unknownError": "未知错误",
     "uploadClothingPhoto": "上传服装照片",
     "generatedClothes": "已生成的 3D 服装",
     "noClothesYet": "尚未生成任何服装模型。"
+  },
+  "rotateCloth": {
+    "title": "调整衣物方向",
+    "subtitle": "使用下方按钮旋转模型至正确方向",
+    "axis": "轴",
+    "reset": "重置",
+    "saveAndFinish": "保存并完成",
+    "saveSuccess": "保存成功！正在返回衣物库...",
+    "saveFailed": "保存失败，请重试",
+    "hint": "提示：Y 轴控制左右旋转，X 轴控制上下翻转，Z 轴控制倾斜"
   }
 }

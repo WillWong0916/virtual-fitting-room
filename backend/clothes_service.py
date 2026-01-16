@@ -84,23 +84,101 @@ class ClothesReconstructionService:
             logger.info("Image set to SAM predictor successfully")
             
             h, w = image_np.shape[:2]
-            input_point = np.array([[w // 2, h // 2]])
-            input_label = np.array([1])
             
-            logger.info(f"Running SAM prediction (center point: {input_point[0]})...")
+            # 策略 1: 使用中心點作為主要提示，並使用四角作為負面提示（排除背景）
+            # 正面提示點：中心區域（衣物通常在中心）
+            positive_points = np.array([
+                [w // 2, h // 2],           # 中心
+            ])
+            positive_labels = np.ones(len(positive_points))
+            
+            # 負面提示點：四角（背景通常在角落）
+            negative_points = np.array([
+                [w * 0.05, h * 0.05],      # 左上角
+                [w * 0.95, h * 0.05],      # 右上角
+                [w * 0.05, h * 0.95],      # 左下角
+                [w * 0.95, h * 0.95],      # 右下角
+            ])
+            negative_labels = np.zeros(len(negative_points))  # 0 表示背景
+            
+            # 合併所有提示點
+            all_points = np.vstack([positive_points, negative_points])
+            all_labels = np.hstack([positive_labels, negative_labels])
+            
+            logger.info(f"Running SAM prediction with {len(positive_points)} positive and {len(negative_points)} negative points...")
+            
+            # 使用正面和負面提示點
             masks, scores, logits = predictor.predict(
-                point_coords=input_point, 
-                point_labels=input_label, 
+                point_coords=all_points,
+                point_labels=all_labels,
                 multimask_output=True
             )
-            logger.info(f"SAM prediction completed. Found {len(masks)} masks, best score: {np.max(scores):.4f}")
             
-            mask_bool = masks[np.argmax(scores)]
-            kernel = np.ones((10, 10), np.uint8)
+            logger.info(f"SAM prediction completed. Found {len(masks)} mask candidates")
+            
+            # 策略 2: 選擇最適合的 mask（避免選擇背景）
+            # 計算每個 mask 的面積和覆蓋率
+            mask_areas = [np.sum(mask) for mask in masks]
+            mask_coverage_ratios = [area / (h * w) for area in mask_areas]
+            
+            # 過濾掉過大（可能是背景）或過小（可能是圖案）的 mask
+            # 理想的衣物 mask 應該覆蓋 20%-70% 的圖片
+            valid_indices = [
+                i for i, coverage in enumerate(mask_coverage_ratios)
+                if 0.2 <= coverage <= 0.7
+            ]
+            
+            if not valid_indices:
+                # 如果沒有符合條件的，選擇中等大小的
+                logger.warning("No mask in ideal coverage range (20%-70%), selecting medium-sized mask")
+                sorted_indices = np.argsort(mask_areas)
+                # 選擇中等大小的（不是最大也不是最小）
+                best_mask_idx = sorted_indices[len(sorted_indices) // 2]
+            else:
+                # 從有效範圍內選擇面積最大的
+                valid_areas = [mask_areas[i] for i in valid_indices]
+                best_valid_idx = valid_indices[np.argmax(valid_areas)]
+                best_mask_idx = best_valid_idx
+            
+            mask_bool = masks[best_mask_idx]
+            best_coverage = mask_coverage_ratios[best_mask_idx] * 100
+            logger.info(f"Selected mask {best_mask_idx} with coverage: {best_coverage:.2f}%")
+            
+            # 策略 3: 只合併重疊的 mask（避免合併背景）
+            # 不再自動合併所有大 mask，因為可能包含背景
+            # 只合併與主 mask 有明顯重疊的小 mask（可能是物件的其他部分）
+            main_mask_area = mask_areas[best_mask_idx]
+            for idx, mask in enumerate(masks):
+                if idx == best_mask_idx:
+                    continue
+                
+                # 計算重疊率
+                overlap = np.sum(mask & mask_bool)
+                overlap_ratio = overlap / np.sum(mask) if np.sum(mask) > 0 else 0
+                
+                # 只合併小 mask（可能是物件的一部分）且重疊率 > 50%
+                if mask_areas[idx] < main_mask_area * 0.5 and overlap_ratio > 0.5:
+                    mask_bool = mask_bool | mask
+                    logger.info(f"Merging overlapping mask {idx} (overlap: {overlap_ratio:.2%})")
+            
+            # 策略 4: 形態學處理來平滑 mask 邊緣
             mask_uint8 = mask_bool.astype(np.uint8) * 255
-            dilated_mask = cv2.dilate(mask_uint8, kernel, iterations=1)
-            logger.info(f"Mask processing completed. Mask shape: {dilated_mask.shape}")
-            return dilated_mask > 0
+            
+            # 先閉運算（closing）填充小洞
+            kernel_closing = np.ones((15, 15), np.uint8)
+            mask_closed = cv2.morphologyEx(mask_uint8, cv2.MORPH_CLOSE, kernel_closing)
+            
+            # 再輕微擴張（dilation）確保邊緣完整
+            kernel_dilate = np.ones((10, 10), np.uint8)
+            dilated_mask = cv2.dilate(mask_closed, kernel_dilate, iterations=1)
+            
+            final_mask = dilated_mask > 0
+            
+            final_coverage = np.sum(final_mask) / final_mask.size * 100
+            logger.info(f"Final mask coverage: {final_coverage:.2f}%")
+            logger.info(f"Mask processing completed. Mask shape: {final_mask.shape}")
+            
+            return final_mask
         except Exception as e:
             logger.error(f"Error in get_auto_mask: {e}", exc_info=True)
             return None
@@ -177,17 +255,6 @@ class ClothesReconstructionService:
                 self.inference = None
                 self.sam_predictor = None
 
-    def fix_mesh_orientation(self, mesh: trimesh.Trimesh):
-        """將模型扶正並置中 (將 Z-up 轉為 Y-up)"""
-        # 官方輸出的衣服模型通常是 Z-up (躺著)
-        # 我們需要把它繞 X 軸轉 -90 度，讓它 Y-up (站立)
-        rotation = trimesh.transformations.rotation_matrix(-np.pi / 2, [1, 0, 0])
-        mesh.apply_transform(rotation)
-        
-        # 將模型中心移至原點
-        mesh.vertices -= mesh.center_mass
-        return mesh
-
     def process_image(self, image_path: str, progress_callback=None, auto_unload=True):
         """
         處理圖片並生成 3D 模型
@@ -195,9 +262,6 @@ class ClothesReconstructionService:
         Args:
             image_path: 圖片路徑
             progress_callback: 可選的進度回調函數，接收 (stage, progress, message) 參數
-                - stage: 階段名稱 (str)
-                - progress: 進度百分比 (0-100) (float)
-                - message: 進度消息 (str)
             auto_unload: 處理完成後是否自動卸載模型以釋放 VRAM
         """
         def emit_progress(stage, progress, message):
@@ -242,16 +306,58 @@ class ClothesReconstructionService:
             if not output: return None
             base_name = Path(image_path).stem
 
-            emit_progress("export", 85, "Exporting GLB file...")
-            mesh_obj = output.get("glb")
+            emit_progress("export", 75, "Re-exporting GLB with high-quality settings...")
+            
+            # 始終使用更好的參數重新生成 GLB，確保高品質紋理和細節
+            mesh_obj = None
+            if "mesh" in output and "gaussian" in output:
+                # 直接調用 to_glb 使用更好的參數
+                logger.info("Generating high-quality GLB with improved settings...")
+                logger.info("  - Texture size: 2048 (instead of 1024) for better pattern/logo quality")
+                logger.info("  - Simplify: 0.7 (keeps 30% triangles instead of 5%) for more detail")
+                from sam3d_objects.model.backbone.tdfy_dit.utils import postprocessing_utils
+                
+                mesh_obj = postprocessing_utils.to_glb(
+                    output["gaussian"][0],
+                    output["mesh"][0],
+                    simplify=0.7,  # 保留 30% 的三角形（而不是 5%），保持更多細節
+                    texture_size=2048,  # 使用 2048 紋理（而不是 1024），更好的圖案/logo 品質
+                    fill_holes=True,
+                    fill_holes_max_size=0.04,
+                    verbose=True,
+                    with_mesh_postprocess=True,
+                    with_texture_baking=True,
+                    use_vertex_color=False,
+                    rendering_engine=inf._pipeline.rendering_engine,
+                )
+                logger.info("High-quality GLB generated successfully!")
+            elif output.get("glb") is not None:
+                # 如果沒有 gaussian/mesh 但已有 GLB，使用它（降級方案）
+                logger.warning("Using pipeline-generated GLB (may have lower quality)")
+                mesh_obj = output.get("glb")
+            
             if mesh_obj is not None:
                 glb_path = self.output_dir / f"{base_name}_cloth.glb"
                 if isinstance(mesh_obj, trimesh.Trimesh):
-                    mesh_obj = self.fix_mesh_orientation(mesh_obj)
+                    # --- 自動接地與置中優化 ---
+                    # 生成後先做基本接地，後續由用戶在前端手動旋轉
+                    bounds = mesh_obj.bounds
+                    centroid = mesh_obj.centroid
+                    translation = [
+                        -centroid[0],      # X 置中
+                        -bounds[0, 1],     # Y 接地 (底部對齊 0)
+                        -centroid[2]       # Z 置中
+                    ]
+                    mesh_obj.apply_translation(translation)
+                    logger.info(f"Initial grounding and centering applied. Translation: {translation}")
+                    
                     mesh_obj.export(str(glb_path))
-                logger.info(f"Success! Native textured GLB saved: {glb_path}")
+                logger.info(f"Success! High-quality textured GLB saved: {glb_path}")
                 emit_progress("export", 100, "Success! 3D model generated.")
                 return str(glb_path)
+            else:
+                logger.warning("No mesh object generated from pipeline")
+                return None
 
         except Exception as e:
             logger.error(f"Native 3D Reconstruction failed: {e}", exc_info=True)
