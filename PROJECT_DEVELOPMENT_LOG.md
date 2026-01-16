@@ -314,6 +314,74 @@ virtual-fitting-room/          (總專案資料夾)
     *   檔案驗證錯誤提示
     *   試衣功能未實裝提示
     *   未來可擴展用於其他通知場景
+
+### 第 18 章：編譯優化嘗試與回退 (2026-01-15)
+
+#### 1. 編譯優化嘗試
+*   **目標**: 嘗試啟用 `torch.compile()` 以提升 Clothes 模型推理性能（預期提升 20-50%）
+*   **實現方式**:
+    *   在 `clothes_service.py` 中添加編譯嘗試邏輯
+    *   檢查 triton 是否可用，然後嘗試使用 `compile=True` 加載模型
+    *   實現錯誤處理和自動降級機制
+*   **遇到的問題**:
+    *   **Windows 緩存競態條件**: `torch.compile()` 在寫入緩存文件時發生 `FileExistsError: [WinError 183]`
+    *   **Warmup 階段失敗**: 編譯在 warmup 階段（實際運行推理）時失敗，拋出 `InstantiationException`
+    *   **suppress_errors 無效**: 即使設置了 `torch._dynamo.config.suppress_errors = True`，warmup 階段的錯誤仍會導致失敗
+    *   **多次重試失敗**: 嘗試了預先清理緩存、使用 `suppress_errors` 重試等多種方法，均無法解決問題
+
+#### 2. 問題分析
+*   **根本原因**: 根據 [triton-windows 文檔](https://github.com/woct0rdho/triton-windows)，這是 Windows 上 `torch.compile()` 的已知問題
+*   **可能的解決方案**:
+    *   啟用 Windows 長路徑支持（需要重啟系統）
+    *   升級到 PyTorch 2.6+（如果問題已修復）
+    *   使用較低的編譯模式（需要修改源碼）
+*   **決策**: 由於問題持續且需要系統級修改，決定回退到簡單的 eager 模式
+
+#### 3. 代碼回退
+*   **簡化 `clothes_service.py`**:
+    *   移除了所有編譯嘗試邏輯（約 200+ 行代碼）
+    *   移除了 `is_compiled()` 和 `get_compile_info()` 方法
+    *   簡化 `load_model()` 方法，直接使用 `compile=False`
+    *   移除了所有 triton 相關的檢查和錯誤處理
+*   **簡化 `main.py`**:
+    *   移除了健康端點中的編譯狀態檢查
+    *   健康端點現在只顯示基本的模型加載狀態
+*   **清理測試文件**:
+    *   刪除了 `check_compile_status_simple.py`
+    *   刪除了 `clear_torch_cache.py`
+    *   刪除了 `test_triton_compatibility.py`
+    *   刪除了 `TRITON_TEST_GUIDE.md`
+    *   刪除了 `diagnose_compile.py`
+    *   刪除了 `check_compile_status.py`
+
+#### 4. 最終狀態
+*   **模型加載**: 直接使用 `compile=False`（eager 模式）
+*   **穩定性**: ✅ 完全穩定，無編譯相關錯誤
+*   **啟動速度**: ✅ 更快（跳過編譯嘗試，節省 30-60 秒）
+*   **推理速度**: ⚠️ 較慢（約慢 20-50%），但可接受
+*   **代碼簡潔性**: ✅ 代碼更簡潔，易於維護
+
+#### 5. 技術總結
+*   **經驗教訓**: Windows 上 `torch.compile()` 的兼容性問題較多，需要謹慎使用
+*   **未來方向**: 等待 PyTorch 官方修復 Windows 編譯問題，或考慮使用 WSL2 環境
+*   **當前策略**: 優先考慮穩定性和開發效率，性能優化可以後續處理
+*   **修改的文件**:
+    *   `backend/clothes_service.py`: 
+        *   簡化 `load_model()` 方法，移除所有編譯嘗試邏輯（約 200+ 行代碼）
+        *   移除 `is_compiled()` 和 `get_compile_info()` 方法
+        *   直接使用 `compile=False`（eager 模式）
+        *   簡化環境變數註釋（移除 triton-windows 相關說明）
+    *   `backend/main.py`: 
+        *   移除健康端點中的編譯狀態檢查（`compiled` 和 `compile_mode` 字段）
+        *   簡化環境變數註釋
+*   **刪除的文件**:
+    *   `backend/check_compile_status_simple.py` - 編譯狀態檢查腳本（通過 API）
+    *   `backend/clear_torch_cache.py` - 清理緩存腳本
+    *   `backend/test_triton_compatibility.py` - triton 兼容性測試
+    *   `backend/TRITON_TEST_GUIDE.md` - triton 測試指南
+    *   `backend/diagnose_compile.py` - 編譯診斷腳本
+    *   `backend/check_compile_status.py` - 編譯狀態檢查腳本（詳細版）
+
 ---
 
 ## 7. 技術債務與待優化項目

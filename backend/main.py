@@ -1,5 +1,9 @@
 import sys
+import os
 from pathlib import Path
+
+# 修復 setuptools 兼容性問題（運行時也需要，特別是當 triton 被導入時）
+os.environ.setdefault('SETUPTOOLS_USE_DISTUTILS', 'stdlib')
 
 # 關鍵修正：解決 utils3d.pt 導入問題 (必須在所有 AI 模組之前)
 print(f"DEBUG: Current Python executable: {sys.executable}")
@@ -27,9 +31,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from routers import body, clothes
+from body_service import body_service
+from clothes_service import clothes_service
 
 import logging
-import sys
 
 # 配置日誌
 logging.basicConfig(
@@ -65,6 +70,10 @@ app.include_router(body.router)
 app.include_router(body.bodies_router)
 app.include_router(clothes.router)
 
+# 注意：不再在啟動時預加載模型，改為按需加載（lazy loading）
+# 這可以避免在 4090 24GB VRAM 上同時載入兩個模型導致的資源耗盡問題
+# 模型會在首次使用時自動載入（通過 body_service.load_model() 和 clothes_service.load_model()）
+
 @app.get("/")
 async def root():
     return {
@@ -74,7 +83,25 @@ async def root():
             "list_bodies": "/bodies",
             "upload_cloth_stream": "/clothes/upload/cloth/stream",
             "list_clothes": "/clothes",
-            "static_models": "/outputs"
+            "static_models": "/outputs",
+            "health": "/health"
+        }
+    }
+
+@app.get("/health")
+async def health_check():
+    """健康檢查端點，顯示服務和模型狀態"""
+    return {
+        "status": "healthy",
+        "models": {
+            "body": {
+                "loaded": body_service.estimator is not None,
+                "device": body_service.device
+            },
+            "clothes": {
+                "loaded": clothes_service.inference is not None,
+                "device": clothes_service.device
+            }
         }
     }
 

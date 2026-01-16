@@ -32,16 +32,40 @@ except ImportError as e:
         IMPORT_ERROR_MSG = f"Original error: {e}, Secondary error: {e2}"
 
 class BodyReconstructionService:
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        """確保單例模式"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
-        self.estimator = None
-        self.device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
-        self.output_dir = CURRENT_DIR / "outputs" / "bodies"
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        """初始化（只執行一次）"""
+        if not BodyReconstructionService._initialized:
+            self.estimator = None
+            self.device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
+            self.output_dir = CURRENT_DIR / "outputs" / "bodies"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            BodyReconstructionService._initialized = True
 
-    def load_model(self):
-        """延遲加載模型，確保只在第一次呼叫時加載"""
+    def load_model(self, unload_other_model=True):
+        """
+        延遲加載模型，確保只在第一次呼叫時加載
+        
+        Args:
+            unload_other_model: 如果為 True，會先卸載 Clothes 模型以釋放 VRAM
+        """
         if not AI_MODULES_AVAILABLE:
             raise RuntimeError(f"Body reconstruction AI modules are not available in current environment: {IMPORT_ERROR_MSG}")
+        
+        # 如果指定要卸載其他模型，則卸載 Clothes 模型以釋放 VRAM
+        if unload_other_model and self.estimator is None:
+            from clothes_service import clothes_service
+            if clothes_service.inference is not None:
+                print("Unloading Clothes model to free VRAM for Body model...")
+                clothes_service.unload_model()
             
         if self.estimator is None:
             print(f"Loading SAM 3D Body model on {self.device}...")
@@ -52,49 +76,83 @@ class BodyReconstructionService:
             print("Model loaded successfully!")
         return self.estimator
 
-    def process_image(self, image_path: str):
+    def unload_model(self):
+        """卸載模型以釋放 VRAM"""
+        if self.estimator is not None:
+            print(f"Unloading Body model to free VRAM...")
+            # 將模型移到 CPU 並刪除引用
+            try:
+                if hasattr(self.estimator, 'model') and self.estimator.model is not None:
+                    if hasattr(self.estimator.model, 'cpu'):
+                        self.estimator.model.cpu()
+                    del self.estimator.model
+                
+                # 清理 CUDA 快取
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                elif torch.backends.mps.is_available():
+                    torch.mps.empty_cache()
+                
+                del self.estimator
+                self.estimator = None
+                print("Body model unloaded successfully!")
+            except Exception as e:
+                print(f"Warning: Error unloading Body model: {e}")
+                self.estimator = None
+
+    def process_image(self, image_path: str, auto_unload=True):
         """
         處理單張圖片並生成 3D 模型
+        
+        Args:
+            image_path: 圖片路徑
+            auto_unload: 處理完成後是否自動卸載模型以釋放 VRAM
+        
         回傳: 生成的 .obj 檔案路徑清單
         """
-        estimator = self.load_model()
-        
-        # 1. 讀取並轉換圖片
-        img_bgr = cv2.imread(image_path)
-        if img_bgr is None:
-            raise ValueError(f"Could not read image at {image_path}")
-        
-        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+        try:
+            estimator = self.load_model()
+            
+            # 1. 讀取並轉換圖片
+            img_bgr = cv2.imread(image_path)
+            if img_bgr is None:
+                raise ValueError(f"Could not read image at {image_path}")
+            
+            img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
-        # 2. 執行 AI 推論
-        with torch.no_grad():
-            outputs = estimator.process_one_image(img_rgb)
+            # 2. 執行 AI 推論
+            with torch.no_grad():
+                outputs = estimator.process_one_image(img_rgb)
 
-        if not outputs:
-            return []
+            if not outputs:
+                return []
 
-        # 3. 匯出 3D Mesh (.obj)
-        generated_files = []
-        faces = estimator.faces
-        
-        for i, person_output in enumerate(outputs):
-            if 'pred_vertices' in person_output:
-                vertices = person_output['pred_vertices']
-                if isinstance(vertices, torch.Tensor):
-                    vertices = vertices.cpu().numpy()
-                
-                # 建立唯一的檔名 (可以使用時間戳或原始圖片名)
-                base_name = Path(image_path).stem
-                obj_filename = f"{base_name}_body_{i}.obj"
-                obj_path = self.output_dir / obj_filename
-                
-                mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
-                mesh.export(str(obj_path))
-                generated_files.append(str(obj_path))
-                
-                print(f"Generated 3D mesh: {obj_path}")
+            # 3. 匯出 3D Mesh (.obj)
+            generated_files = []
+            faces = estimator.faces
+            
+            for i, person_output in enumerate(outputs):
+                if 'pred_vertices' in person_output:
+                    vertices = person_output['pred_vertices']
+                    if isinstance(vertices, torch.Tensor):
+                        vertices = vertices.cpu().numpy()
+                    
+                    # 建立唯一的檔名 (可以使用時間戳或原始圖片名)
+                    base_name = Path(image_path).stem
+                    obj_filename = f"{base_name}_body_{i}.obj"
+                    obj_path = self.output_dir / obj_filename
+                    
+                    mesh = trimesh.Trimesh(vertices=vertices, faces=faces)
+                    mesh.export(str(obj_path))
+                    generated_files.append(str(obj_path))
+                    
+                    print(f"Generated 3D mesh: {obj_path}")
 
-        return generated_files
+            return generated_files
+        finally:
+            # 處理完成後自動卸載模型以釋放 VRAM
+            if auto_unload:
+                self.unload_model()
 
     def get_all_bodies(self, presets_only=True):
         """

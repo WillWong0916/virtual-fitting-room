@@ -1,6 +1,9 @@
+import os
+# 修復 setuptools 兼容性問題（運行時也需要，特別是當 triton 被導入時）
+os.environ.setdefault('SETUPTOOLS_USE_DISTUTILS', 'stdlib')
+
 import torch
 import numpy as np
-import os
 import sys
 import logging
 from pathlib import Path
@@ -27,15 +30,27 @@ logging.basicConfig(
 logger = logging.getLogger("ClothesService")
 
 class ClothesReconstructionService:
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        """確保單例模式"""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+    
     def __init__(self):
-        self.inference = None
-        self.sam_predictor = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self.output_dir = CURRENT_DIR / "outputs" / "clothes"
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # 由於已經安裝了正確版本的 MoGe 和 utils3d，不再需要強制設定 LIDRA_SKIP_INIT
-        logger.info(f"Initialized ClothesService on {self.device}")
+        """初始化（只執行一次）"""
+        if not ClothesReconstructionService._initialized:
+            self.inference = None
+            self.sam_predictor = None
+            self.device = "cuda" if torch.cuda.is_available() else "cpu"
+            self.output_dir = CURRENT_DIR / "outputs" / "clothes"
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # 由於已經安裝了正確版本的 MoGe 和 utils3d，不再需要強制設定 LIDRA_SKIP_INIT
+            logger.info(f"Initialized ClothesService on {self.device}")
+            ClothesReconstructionService._initialized = True
 
     def load_sam(self):
         if self.sam_predictor is None:
@@ -90,7 +105,21 @@ class ClothesReconstructionService:
             logger.error(f"Error in get_auto_mask: {e}", exc_info=True)
             return None
 
-    def load_model(self):
+
+    def load_model(self, unload_other_model=True):
+        """
+        加載 SAM 3D Objects 模型
+        
+        Args:
+            unload_other_model: 如果為 True，會先卸載 Body 模型以釋放 VRAM
+        """
+        # 如果指定要卸載其他模型，則卸載 Body 模型以釋放 VRAM
+        if unload_other_model and self.inference is None:
+            from body_service import body_service
+            if body_service.estimator is not None:
+                logger.info("Unloading Body model to free VRAM for Clothes model...")
+                body_service.unload_model()
+        
         if self.inference is None:
             logger.info("Loading SAM 3D Objects model with Native Nvdiffrast & MoGe support...")
             try:
@@ -99,16 +128,54 @@ class ClothesReconstructionService:
                 tag = "hf"
                 config_path = CLOTHING_FACTORY_DIR / "checkpoints" / tag / "checkpoints" / "pipeline.yaml"
                 
+                # 使用 eager 模式（compile=False）以確保穩定性
                 self.inference = Inference(str(config_path), compile=False)
                 
                 # 確認渲染引擎為 nvdiffrast
                 self.inference._pipeline.rendering_engine = "nvdiffrast"
                 
-                logger.info("Clothes model loaded with native Nvdiffrast & MoGe engine!")
+                logger.info("✅ Clothes model loaded successfully")
             except Exception as e:
                 logger.error(f"Failed to load clothes model: {e}", exc_info=True)
                 raise e
         return self.inference
+
+    def unload_model(self):
+        """卸載模型以釋放 VRAM"""
+        if self.inference is not None:
+            logger.info("Unloading Clothes model to free VRAM...")
+            try:
+                # 卸載主模型
+                if hasattr(self.inference, '_pipeline') and self.inference._pipeline is not None:
+                    # 嘗試清理 pipeline 中的模型
+                    if hasattr(self.inference._pipeline, 'model') and self.inference._pipeline.model is not None:
+                        if hasattr(self.inference._pipeline.model, 'cpu'):
+                            self.inference._pipeline.model.cpu()
+                        del self.inference._pipeline.model
+                
+                # 卸載 SAM predictor
+                if self.sam_predictor is not None:
+                    if hasattr(self.sam_predictor, 'model'):
+                        if hasattr(self.sam_predictor.model, 'cpu'):
+                            self.sam_predictor.model.cpu()
+                        del self.sam_predictor.model
+                    del self.sam_predictor
+                    self.sam_predictor = None
+                
+                del self.inference
+                self.inference = None
+                
+                # 清理 CUDA 快取
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                elif torch.backends.mps.is_available():
+                    torch.mps.empty_cache()
+                
+                logger.info("✅ Clothes model unloaded successfully!")
+            except Exception as e:
+                logger.warning(f"Error unloading Clothes model: {e}")
+                self.inference = None
+                self.sam_predictor = None
 
     def fix_mesh_orientation(self, mesh: trimesh.Trimesh):
         """將模型扶正並置中 (將 Z-up 轉為 Y-up)"""
@@ -121,7 +188,7 @@ class ClothesReconstructionService:
         mesh.vertices -= mesh.center_mass
         return mesh
 
-    def process_image(self, image_path: str, progress_callback=None):
+    def process_image(self, image_path: str, progress_callback=None, auto_unload=True):
         """
         處理圖片並生成 3D 模型
         
@@ -131,27 +198,28 @@ class ClothesReconstructionService:
                 - stage: 階段名稱 (str)
                 - progress: 進度百分比 (0-100) (float)
                 - message: 進度消息 (str)
+            auto_unload: 處理完成後是否自動卸載模型以釋放 VRAM
         """
         def emit_progress(stage, progress, message):
             if progress_callback:
                 progress_callback(stage, progress, message)
             logger.info(f"[{stage}] {progress:.1f}% - {message}")
         
-        inf = self.load_model()
-        img_pil = Image.open(image_path).convert("RGB")
-        img_np = np.array(img_pil)
-        
-        emit_progress("masking", 5, "Running Auto-Masking with SAM...")
-        mask_bool = self.get_auto_mask(img_np)
-        if mask_bool is None: 
-            logger.warning("Auto-masking failed, using full image mask")
-            mask_bool = np.ones(img_np.shape[:2], dtype=bool)
-        else:
-            logger.info(f"Auto-mask generated successfully. Mask coverage: {np.sum(mask_bool) / mask_bool.size * 100:.2f}%")
-        emit_progress("masking", 10, "Auto-masking completed")
-
-        emit_progress("preparation", 15, "Starting High-Quality Native 3D reconstruction...")
         try:
+            inf = self.load_model()
+            img_pil = Image.open(image_path).convert("RGB")
+            img_np = np.array(img_pil)
+            
+            emit_progress("masking", 5, "Running Auto-Masking with SAM...")
+            mask_bool = self.get_auto_mask(img_np)
+            if mask_bool is None: 
+                logger.warning("Auto-masking failed, using full image mask")
+                mask_bool = np.ones(img_np.shape[:2], dtype=bool)
+            else:
+                logger.info(f"Auto-mask generated successfully. Mask coverage: {np.sum(mask_bool) / mask_bool.size * 100:.2f}%")
+            emit_progress("masking", 10, "Auto-masking completed")
+
+            emit_progress("preparation", 15, "Starting High-Quality Native 3D reconstruction...")
             emit_progress("preparation", 20, "Merging mask to RGBA image...")
             rgba_image = inf.merge_mask_to_rgba(img_np, mask_bool)
             logger.info(f"RGBA image prepared. Shape: {rgba_image.shape}")
@@ -190,6 +258,10 @@ class ClothesReconstructionService:
             if progress_callback:
                 progress_callback("error", 0, f"Error: {str(e)}")
             raise e
+        finally:
+            # 處理完成後自動卸載模型以釋放 VRAM
+            if auto_unload:
+                self.unload_model()
 
     def get_all_clothes(self, presets_only=False):
         """
