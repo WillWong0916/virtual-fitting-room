@@ -640,9 +640,10 @@ def to_glb(
         logger.info("  Step 3 completed: Texture optimization finished")
         texture = Image.fromarray(texture)
         material = trimesh.visual.material.PBRMaterial(
-            roughnessFactor=1.0,
+            roughnessFactor=0.9, # 降低粗糙度，讓材質更有光澤
             baseColorTexture=texture,
             baseColorFactor=np.array([255, 255, 255, 255], dtype=np.uint8),
+            emissiveFactor=np.array([0.1, 0.1, 0.1], dtype=np.float32),  # 添加輕微自發光
         )
 
     # --- 移除 Z-up 轉 Y-up，讓 clothes_service 完全控制 ---

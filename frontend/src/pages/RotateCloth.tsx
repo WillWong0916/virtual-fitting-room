@@ -146,14 +146,14 @@ export function RotateCloth() {
         <div style={{ 
           width: '100%', 
           height: '400px', 
-          backgroundColor: '#1a1a1a', 
+          backgroundColor: '#000', 
           borderRadius: '12px', 
           overflow: 'hidden',
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)'
         }}>
           <Canvas shadows dpr={[1, 2]}>
             <Suspense fallback={null}>
-              <Stage environment="city" intensity={0.5} contactShadow={true} shadowBias={-0.0015}>
+              <Stage environment="city" intensity={2.0} shadows={true}>
                 <RotatableModel 
                   url={fullModelUrl} 
                   rotationX={rotationX} 

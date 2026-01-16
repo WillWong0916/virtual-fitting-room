@@ -65,7 +65,7 @@ export function ClothViewer({ modelUrl, cacheKey }: Props) {
     <div style={{ width: '100%', height: '300px', backgroundColor: '#000', borderRadius: '12px', overflow: 'hidden' }}>
       <Canvas shadows dpr={[1, 2]}>
         <Suspense fallback={null}>
-          <Stage environment="city" intensity={0.5} contactShadow={true} shadowBias={-0.0015}>
+          <Stage environment="city" intensity={2.0} shadows={true}>
             {/* 使用 key 強制重新掛載 Model 組件 */}
             <Model key={cacheKey} url={modelUrl} cacheKey={cacheKey} />
           </Stage>
